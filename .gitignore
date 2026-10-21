@@ -1,0 +1,49 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Secrets and env files
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Editor/IDE
+.idea/
+.vscode/
+.DS_Store
+
+# SQLite DB files
+recipes.db
+recipes.db-shm
+recipes.db-wal
+
+# Terraform state (may contain sensitive resource data)
+*.tfstate
+*.tfstate.*
+*.tfvars
+!**/workspaces/*.tfvars
+.terraform/
+.terraform.lock.hcl
+crash.log
+
+# Claude project memory
+.claude/

@@ -1,0 +1,47 @@
+---
+name: '[Reusable] Build'
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Branch, tag, or SHA to build'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.version }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build
+        run: GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -o recipe-api ./cmd/recipe-api
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: recipe-api
+          path: recipe-api
+          if-no-files-found: error

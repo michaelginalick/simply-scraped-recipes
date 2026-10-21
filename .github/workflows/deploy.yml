@@ -1,0 +1,27 @@
+---
+name: '[Dispatch] Deploy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Branch, tag, or SHA to build (defaults to current SHA)'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  deploy-api:
+    name: Deploy API
+    needs: build
+    uses: ./.github/workflows/deploy-api.yml
+    secrets: inherit

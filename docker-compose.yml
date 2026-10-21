@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      args:
+        CMD: recipe-api
+    ports:
+      - "8080:8080"
+    volumes:
+      - recipe-data:/data
+    environment:
+      - DB_PATH=/data/recipes.db
+
+  scraper:
+    build:
+      context: .
+      args:
+        CMD: scraper
+    volumes:
+      - recipe-data:/data
+    environment:
+      - DB_PATH=/data/recipes.db
+    profiles:
+      - scraper
+
+volumes:
+  recipe-data:

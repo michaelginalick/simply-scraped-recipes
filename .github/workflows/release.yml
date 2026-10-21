@@ -1,0 +1,24 @@
+---
+name: '[Trigger] Release'
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  deploy-api:
+    name: Deploy API
+    needs: build
+    uses: ./.github/workflows/deploy-api.yml
+    secrets: inherit

@@ -1,0 +1,48 @@
+---
+name: '[Reusable] Deploy API'
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: 'Name of the uploaded artifact containing the binary'
+        type: string
+        default: recipe-api
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+
+      - name: Write SSH key and known hosts
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy binary
+        run: |
+          scp -i "$RUNNER_TEMP/deploy_key" \
+            recipe-api ec2-user@${{ secrets.HOST }}:/tmp/recipe-api
+
+      - name: Restart service
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" \
+            ec2-user@${{ secrets.HOST }} \
+            "sudo mv /tmp/recipe-api /opt/recipe-app/recipe-api \
+              && sudo chmod +x /opt/recipe-app/recipe-api \
+              && sudo systemctl restart recipe-app \
+              && sudo systemctl is-active --quiet recipe-app"
