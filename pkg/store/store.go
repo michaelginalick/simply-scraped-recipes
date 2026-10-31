@@ -13,6 +13,10 @@ type Store struct {
 	db *sql.DB
 }
 
+func NewFromDB(db *sql.DB) Store {
+	return Store{db: db}
+}
+
 func New(path, schema string) (Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
