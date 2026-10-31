@@ -34,6 +34,6 @@ ORDER BY rank
 
 
 -- name: SchemaExists
-SELECT EXISTS (
-    SELECT name from sqlite_schema WHERE type='table' AND name='recipes'
-) AS table_exists;
+SELECT (
+    SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name IN ('recipes', 'scrape_jobs')
+) = 2 AS schema_exists;

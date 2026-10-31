@@ -9,6 +9,9 @@ import (
 //go:embed recipe.sql
 var recipeSQL string
 
+//go:embed job.sql
+var jobSQL string
+
 var (
 	getRecipeQuery         = mustQuery(recipeSQL, "GetRecipe")
 	createRecipeQuery      = mustQuery(recipeSQL, "CreateRecipe")
@@ -16,6 +19,12 @@ var (
 	createInstructionQuery = mustQuery(recipeSQL, "CreateInstruction")
 	searchRecipeQuery      = mustQuery(recipeSQL, "SearchRecipe")
 	schemaExistsQuery      = mustQuery(recipeSQL, "SchemaExists")
+
+	insertJobQuery        = mustQuery(jobSQL, "InsertJob")
+	promoteAndGetJobQuery = mustQuery(jobSQL, "PromoteAndGetJob")
+	completeJobQuery      = mustQuery(jobSQL, "CompleteJob")
+	recoverJobsQuery      = mustQuery(jobSQL, "RecoverJobs")
+	getJobQuery           = mustQuery(jobSQL, "GetJob")
 )
 
 func SchemaExists(db *sql.DB) (bool, error) {

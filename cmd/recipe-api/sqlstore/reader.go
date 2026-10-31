@@ -94,6 +94,43 @@ func (r sqlReader) SearchRecipe(ctx context.Context, queryString string) ([]doma
 	return result, nil
 }
 
+func (r sqlReader) GetJob(ctx context.Context, id string) (domain.Job, error) {
+	var job domain.Job
+	var idInt int64
+	var statusStr string
+	var startedAt, completedAt sql.NullTime
+	var errorMsg sql.NullString
+
+	err := r.db.QueryRowContext(ctx, getJobQuery, sql.Named("id", id)).
+		Scan(&idInt, &job.URL, &job.RootHost, &statusStr,
+			&job.CreatedAt, &startedAt, &completedAt, &errorMsg)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Job{}, domain.ErrJobNotFound
+		}
+		return domain.Job{}, fmt.Errorf("get job: %w", err)
+	}
+
+	job.ID = fmt.Sprintf("%d", idInt)
+
+	job.Status, err = domain.ParseJobStatus(statusStr)
+	if err != nil {
+		return domain.Job{}, fmt.Errorf("get job: %w", err)
+	}
+
+	if startedAt.Valid {
+		job.StartedAt = &startedAt.Time
+	}
+	if completedAt.Valid {
+		job.CompletedAt = &completedAt.Time
+	}
+	if errorMsg.Valid {
+		job.ErrorMsg = &errorMsg.String
+	}
+
+	return job, nil
+}
+
 func (d dbRecipe) toDomain() domain.Recipe {
 	r := domain.Recipe{Name: d.name}
 
