@@ -40,6 +40,9 @@ AFTER DELETE ON recipes BEGIN
     DELETE FROM recipe_search WHERE rowid = OLD.id;
 END;
 
+CREATE INDEX IF NOT EXISTS idx_ingredients_recipe_id ON ingredients(recipe_id);
+CREATE INDEX IF NOT EXISTS idx_instructions_recipe_id_step_num ON instructions(recipe_id, step_num);
+
 -- Refresh the search index after an ingredient is inserted
 CREATE TRIGGER IF NOT EXISTS ingredients_ai
 AFTER INSERT ON ingredients BEGIN
@@ -53,3 +56,16 @@ AFTER INSERT ON ingredients BEGIN
     WHERE r.id = NEW.recipe_id
     GROUP BY r.id;
 END;
+
+CREATE TABLE IF NOT EXISTS scrape_jobs (
+    id           INTEGER PRIMARY KEY,
+    url          TEXT NOT NULL UNIQUE,
+    root_host    TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at   DATETIME,
+    completed_at DATETIME,
+    error_msg    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_scrape_jobs_status_created_at ON scrape_jobs(status, created_at);
