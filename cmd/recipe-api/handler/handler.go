@@ -20,8 +20,22 @@ type Writer interface {
 }
 
 type Reader interface {
+	RecipeReader
+	JobReader
+}
+
+
+type RecipeReader interface {
 	GetRecipe(ctx context.Context, id string) (d.Recipe, error)
 	SearchRecipe(ctx context.Context, queryString string) ([]d.Recipe, error)
+}
+
+type JobReader interface {
+	GetJob(ctx context.Context, id string) (d.Job, error)
+}
+
+type JobService interface {
+	Submit(ctx context.Context, rawURL string) (id string, err error)
 }
 
 // ftsSpecial matches characters that could alter FTS5 query semantics or cause parse errors.
@@ -89,6 +103,58 @@ func CreateHandler(writer Writer) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
+	})
+}
+
+func SubmitJobHandler(svc JobService) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+		var req dto.SubmitJobRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		if err := req.Validate(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		id, err := svc.Submit(r.Context(), req.URL)
+		if err != nil {
+			if errors.Is(err, d.ErrJobAlreadyExists) {
+				http.Error(w, "job already exists for this url", http.StatusConflict)
+				return
+			}
+			slog.Error("submit job", "url", req.URL, "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(envelope[dto.SubmitJobResponse]{Data: dto.SubmitJobResponse{ID: id}})
+	})
+}
+
+func GetJobHandler(reader Reader) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		job, err := reader.GetJob(r.Context(), id)
+		if err != nil {
+			if errors.Is(err, d.ErrJobNotFound) {
+				http.Error(w, "job not found", http.StatusNotFound)
+				return
+			}
+			slog.Error("get job", "id", id, "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(envelope[dto.JobResponse]{Data: dto.NewJobResponse(job)}); err != nil {
+			return
+		}
 	})
 }
 

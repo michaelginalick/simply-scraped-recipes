@@ -16,6 +16,7 @@ import (
 type stubReader struct {
 	recipe  d.Recipe
 	results []d.Recipe
+	job     d.Job
 	err     error
 }
 
@@ -25,6 +26,10 @@ func (s stubReader) GetRecipe(_ context.Context, _ string) (d.Recipe, error) {
 
 func (s stubReader) SearchRecipe(_ context.Context, _ string) ([]d.Recipe, error) {
 	return s.results, s.err
+}
+
+func (s stubReader) GetJob(_ context.Context, _ string) (d.Job, error) {
+	return s.job, s.err
 }
 
 type stubWriter struct {
@@ -197,6 +202,154 @@ func TestSearchHandler_QuerySanitized(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("got status %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+type stubJobService struct {
+	id  string
+	err error
+}
+
+func (s stubJobService) Submit(_ context.Context, _ string) (string, error) {
+	return s.id, s.err
+}
+
+func TestSubmitJobHandler_Accepted(t *testing.T) {
+	body := `{"url":"https://example.com/recipe"}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{id: "abc-123"}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusAccepted {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusAccepted)
+	}
+
+	var body2 envelope[dto.SubmitJobResponse]
+	if err := json.NewDecoder(rr.Body).Decode(&body2); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body2.Data.ID != "abc-123" {
+		t.Errorf("got id %q, want %q", body2.Data.ID, "abc-123")
+	}
+}
+
+func TestSubmitJobHandler_InvalidJSON(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(`{bad`))
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSubmitJobHandler_MissingURL(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(`{"url":""}`))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSubmitJobHandler_InvalidScheme(t *testing.T) {
+	body := `{"url":"ftp://example.com/recipe"}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSubmitJobHandler_Conflict(t *testing.T) {
+	body := `{"url":"https://example.com/recipe"}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{err: d.ErrJobAlreadyExists}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusConflict)
+	}
+}
+
+func TestSubmitJobHandler_InternalError(t *testing.T) {
+	body := `{"url":"https://example.com/recipe"}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	SubmitJobHandler(stubJobService{err: errors.New("db error")}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestGetJobHandler_OK(t *testing.T) {
+	job := d.Job{
+		ID:     "abc-123",
+		URL:    "https://example.com/recipe",
+		Status: d.JobStatusPending,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/abc-123", nil)
+	req.SetPathValue("id", "abc-123")
+	rr := httptest.NewRecorder()
+
+	GetJobHandler(stubReader{job: job}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	var body envelope[dto.JobResponse]
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body.Data.ID != "abc-123" {
+		t.Errorf("got id %q, want %q", body.Data.ID, "abc-123")
+	}
+
+	if body.Data.Status != "pending" {
+		t.Errorf("got status %q, want %q", body.Data.Status, "pending")
+	}
+}
+
+func TestGetJobHandler_NotFound(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/jobs/missing", nil)
+	req.SetPathValue("id", "missing")
+	rr := httptest.NewRecorder()
+
+	GetJobHandler(stubReader{err: d.ErrJobNotFound}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusNotFound)
+	}
+}
+
+func TestGetJobHandler_InternalError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/jobs/abc-123", nil)
+	req.SetPathValue("id", "abc-123")
+	rr := httptest.NewRecorder()
+
+	GetJobHandler(stubReader{err: errors.New("db error")}).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("got status %d, want %d", rr.Code, http.StatusInternalServerError)
 	}
 }
 

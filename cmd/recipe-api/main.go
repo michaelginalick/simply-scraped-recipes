@@ -2,6 +2,7 @@ package main
 
 import (
 	"cmp"
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -9,12 +10,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/michaelginalick/recipe-app/cmd/recipe-api/handler"
 	"github.com/michaelginalick/recipe-app/cmd/recipe-api/middleware"
+	srv "github.com/michaelginalick/recipe-app/cmd/recipe-api/service"
 	"github.com/michaelginalick/recipe-app/cmd/recipe-api/sqlstore"
 	"github.com/michaelginalick/recipe-app/migrations"
+	pkgstore "github.com/michaelginalick/recipe-app/pkg/store"
 	_ "modernc.org/sqlite"
 )
 
@@ -26,29 +31,39 @@ const (
 	maxWriteConnections = 1
 	assetsDirectory     = "static"
 	dbPath              = "./recipes.db"
+	maxJobs             = 2
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGSTOP)
+	defer stop()
+
 	dbReadPath := cmp.Or(os.Getenv("DB_PATH"), dbPath)
 	readOnlyDBPath := fmt.Sprintf("file:%s?mode=ro", dbReadPath)
 
 	// Write connection must be opened first so the DB file exists before
 	// the read-only connection attempts to open it.
 	writeDB := openDB(dbReadPath, maxWriteConnections)
-	if writeDB == nil {
-		log.Fatal("failed to open write db")
-	}
-
 	defer writeDB.Close()
 
-	readDB := openDB(readOnlyDBPath, maxReadConnections)
-	if readDB == nil {
-		log.Fatal("failed to open read db")
+	if err := migrations.Run(writeDB); err != nil {
+		log.Fatal("migrations: ", err)
 	}
+
+	readDB := openDB(readOnlyDBPath, maxReadConnections)
 	defer readDB.Close()
 
-	recipeReader := sqlstore.NewSQLReader(readDB)
+	reader := sqlstore.NewSQLReader(readDB)
 	recipeWriter := sqlstore.NewSQLWriter(writeDB)
+
+	jobStore := sqlstore.NewSQLJobStore(writeDB)
+
+	if err := jobStore.RecoverJobs(ctx); err != nil {
+		log.Fatal("recover jobs: ", err)
+	}
+
+	jobSvc := srv.NewJobService(jobStore, pkgstore.NewFromDB(writeDB), maxJobs)
+	jobSvc.Start(context.Background())
 
 	static, err := fs.Sub(staticFiles, assetsDirectory)
 	if err != nil {
@@ -61,9 +76,14 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/", http.FileServer(http.FS(static)))
-	mux.Handle("GET /recipe/{id}", jsonMW.ThenFunc(handler.GetHandler(recipeReader)))
+
+	mux.Handle("GET /recipe/{id}", jsonMW.ThenFunc(handler.GetHandler(reader)))
 	mux.Handle("POST /recipe", mw.ThenFunc(handler.CreateHandler(recipeWriter)))
-	mux.Handle("GET /search", jsonMW.ThenFunc(handler.SearchHandler(recipeReader)))
+
+	mux.Handle("GET /search", jsonMW.ThenFunc(handler.SearchHandler(reader)))
+
+	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
+	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))
 
 	server := &http.Server{
 		Addr:              ":8080",
@@ -74,9 +94,20 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("server shutdown: %v", err)
+		}
+	}()
+
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
+
+	jobSvc.Stop()
 }
 
 func openDB(dsn string, maxConns int) *sql.DB {
@@ -93,30 +124,5 @@ func openDB(dsn string, maxConns int) *sql.DB {
 		log.Fatal(err)
 	}
 
-	if schemaExists(db) {
-		return db
-	}
-
-	if err := applySchema(db, migrations.SCHEMA); err != nil {
-		db.Close()
-		return nil
-	}
-
 	return db
-}
-
-func applySchema(db *sql.DB, schema string) error {
-	if _, err := db.Exec(schema); err != nil {
-		return fmt.Errorf("apply schema: %w", err)
-	}
-
-	return nil
-}
-
-func schemaExists(db *sql.DB) bool {
-	exists, err := sqlstore.SchemaExists(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return exists
 }
