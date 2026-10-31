@@ -162,7 +162,7 @@ func (app *Application) Run() {
 	app.startWorkers(ctx, &wg)
 
 	app.processWorkList(ctx, &pending)
-	// cancel() via defer stops all workers; wg.Wait() ensures they exit cleanly.
+	cancel()
 	wg.Wait()
 }
 
