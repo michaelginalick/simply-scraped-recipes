@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -97,7 +98,7 @@ func New(opts ...Option) (*Application, error) {
 	return app, nil
 }
 
-func (app *Application) startWorkers(ctx context.Context, wg *sync.WaitGroup) {
+func (app *Application) startWorkers(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
 	for range app.threadCount {
 		wg.Go(func() {
 			for {
@@ -108,7 +109,11 @@ func (app *Application) startWorkers(ctx context.Context, wg *sync.WaitGroup) {
 					if !ok {
 						return
 					}
-					foundLinks, recipe := app.crawl(link)
+					foundLinks, recipe, err := app.crawl(link)
+					if err != nil {
+						slog.Error("Shutting down crawling due to errors", "error", err)
+						cancel()
+					}
 					app.saveRecipe(recipe, link.String())
 
 					// Send without blocking the worker so it can keep reading
@@ -159,19 +164,22 @@ func (app *Application) Run() {
 	pending.Store(1) // account for the seed batch
 	go func() { app.worklist <- []*url.URL{app.source} }()
 
-	app.startWorkers(ctx, &wg)
+	app.startWorkers(ctx, cancel, &wg)
 
 	app.processWorkList(ctx, &pending)
 	cancel()
 	wg.Wait()
 }
 
-func (app *Application) crawl(u *url.URL) ([]*url.URL, r.Recipe) {
+func (app *Application) crawl(u *url.URL) ([]*url.URL, r.Recipe, error) {
 	urls, r, err := app.linkClient.ExtractRecipeLinks(u.String(), app.rootHost)
 	if err != nil {
+		if errors.Is(err, links.ErrTooManyRequests) {
+			return nil, r, err
+		}
 		slog.Error("error parsing link", "error", err)
 	}
-	return urls, r
+	return urls, r, nil
 }
 
 func (app *Application) seenURLs(urlStr string) bool {

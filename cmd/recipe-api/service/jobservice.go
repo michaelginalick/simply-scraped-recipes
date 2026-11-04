@@ -112,7 +112,6 @@ func (js *jobService) runJob(job domain.Job) {
 		if err := js.store.CompleteJob(context.Background(), job.ID, errMsg); err != nil {
 			slog.Error("complete job", "id", job.ID, "error", err)
 		}
-		// js.signal()
 	}()
 
 	a, err := app.New(
