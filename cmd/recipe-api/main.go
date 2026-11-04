@@ -70,8 +70,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mw := middleware.Chain{middleware.Recovery, middleware.Logging}
-	jsonMW := middleware.Chain{middleware.Recovery, middleware.Logging, middleware.JSONContentType}
+	mw := middleware.Chain{middleware.Recovery, middleware.Logging, middleware.MaxReader}
+	jsonMW := middleware.Chain{middleware.Recovery, middleware.Logging, middleware.JSONContentType, middleware.MaxReader}
 
 	mux := http.NewServeMux()
 
