@@ -24,7 +24,6 @@ type Reader interface {
 	JobReader
 }
 
-
 type RecipeReader interface {
 	GetRecipe(ctx context.Context, id string) (d.Recipe, error)
 	SearchRecipe(ctx context.Context, queryString string) ([]d.Recipe, error)
@@ -75,8 +74,6 @@ func GetHandler(reader Reader) http.HandlerFunc {
 
 func CreateHandler(writer Writer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-
 		var req dto.CreateRecipeRequest
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -108,9 +105,8 @@ func CreateHandler(writer Writer) http.HandlerFunc {
 
 func SubmitJobHandler(svc JobService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-
 		var req dto.SubmitJobRequest
+
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid JSON", http.StatusBadRequest)
 			return
