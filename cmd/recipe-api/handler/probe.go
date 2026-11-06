@@ -6,11 +6,10 @@ import (
 	"net/http"
 
 	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
-	srv "github.com/michaelginalick/recipe-app/cmd/recipe-api/service"
 )
 
 type Prober interface {
-	Probe(ctx context.Context, rawURL string) srv.ProbeResult
+	Probe(ctx context.Context, rawURL string) dto.ProbeResponse
 }
 
 func ProbeHandler(svc Prober) http.HandlerFunc {
@@ -27,18 +26,6 @@ func ProbeHandler(svc Prober) http.HandlerFunc {
 			return
 		}
 
-		result := svc.Probe(r.Context(), req.URL)
-
-		resp := dto.ProbeResponse{
-			Scraped: result.Scraped,
-			Error:   result.Error,
-		}
-		if result.Scraped {
-			resp.Recipe = &dto.ProbeRecipe{
-				Name:             result.Name,
-			}
-		}
-
-		json.NewEncoder(w).Encode(envelope[dto.ProbeResponse]{Data: resp})
+		json.NewEncoder(w).Encode(envelope[dto.ProbeResponse]{Data: svc.Probe(r.Context(), req.URL)})
 	}
 }
