@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 	srv "github.com/michaelginalick/recipe-app/cmd/recipe-api/service"
 	"github.com/michaelginalick/recipe-app/cmd/recipe-api/sqlstore"
 	"github.com/michaelginalick/recipe-app/migrations"
+	"github.com/michaelginalick/recipe-app/pkg/links"
 	pkgstore "github.com/michaelginalick/recipe-app/pkg/store"
 	_ "modernc.org/sqlite"
 )
@@ -55,7 +57,6 @@ func main() {
 
 	reader := sqlstore.NewSQLReader(readDB)
 	recipeWriter := sqlstore.NewSQLWriter(writeDB)
-
 	jobStore := sqlstore.NewSQLJobStore(writeDB)
 
 	if err := jobStore.RecoverJobs(ctx); err != nil {
@@ -84,6 +85,11 @@ func main() {
 
 	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
 	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))
+
+	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(srv.NewProbeService(links.NewLinkClient(&http.Transport{
+		DialContext:           (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
+		ResponseHeaderTimeout: 2 * time.Second,
+	})))))
 
 	server := &http.Server{
 		Addr:              ":8080",
