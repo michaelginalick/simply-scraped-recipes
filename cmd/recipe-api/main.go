@@ -78,6 +78,10 @@ func main() {
 
 	mux.Handle("/", http.FileServer(http.FS(static)))
 
+	mux.HandleFunc("GET /r/{id}", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFileFS(w, r, static, "recipe.html")
+	})
+
 	mux.Handle("GET /recipe/{id}", jsonMW.ThenFunc(handler.GetHandler(reader)))
 	mux.Handle("POST /recipe", mw.ThenFunc(handler.CreateHandler(recipeWriter)))
 

@@ -31,9 +31,7 @@ func (r ProbeRequest) Validate() error {
 }
 
 type ProbeRecipe struct {
-	Name             string `json:"name"`
-	IngredientCount  int    `json:"ingredient_count"`
-	InstructionCount int    `json:"instruction_count"`
+	Name string `json:"name"`
 }
 
 type ProbeResponse struct {
