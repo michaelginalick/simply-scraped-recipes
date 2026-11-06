@@ -2,6 +2,7 @@ package links
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -20,47 +21,54 @@ func newTimeoutClient() *LinkClient {
 	}))
 }
 
-func assertErr(t *testing.T, err error, want error, wantNonNil bool) {
+// errAny signals that any non-nil error satisfies the test case.
+var errAny = errors.New("any error")
+
+func assertProbeErr(t *testing.T, err, want error) {
 	t.Helper()
-	switch {
-	case want != nil && err != want:
+	if want == errAny {
+		if err == nil {
+			t.Error("expected non-nil error, got nil")
+		}
+	} else if err != want {
 		t.Errorf("got err %v, want %v", err, want)
-	case wantNonNil && err == nil:
-		t.Error("expected non-nil error, got nil")
-	case want == nil && !wantNonNil && err != nil:
-		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func assertRecipe(t *testing.T, recipe r.Recipe, wantName string, wantIngredients, wantInstructions int) {
+func assertProbeRecipe(t *testing.T, got r.Recipe, want *r.Recipe) {
 	t.Helper()
-	if recipe.Name != wantName {
-		t.Errorf("got name %q, want %q", recipe.Name, wantName)
-	}
-	if len(recipe.Ingredients) != wantIngredients {
-		t.Errorf("got %d ingredients, want %d", len(recipe.Ingredients), wantIngredients)
-	}
-	if len(recipe.Instructions) != wantInstructions {
-		t.Errorf("got %d instructions, want %d", len(recipe.Instructions), wantInstructions)
+	if want != nil {
+		if got.Name != want.Name {
+			t.Errorf("got name %q, want %q", got.Name, want.Name)
+		}
+		if len(got.Ingredients) != len(want.Ingredients) {
+			t.Errorf("got %d ingredients, want %d", len(got.Ingredients), len(want.Ingredients))
+		}
+		if len(got.Instructions) != len(want.Instructions) {
+			t.Errorf("got %d instructions, want %d", len(got.Instructions), len(want.Instructions))
+		}
+	} else if got.Name != "" {
+		t.Errorf("expected empty recipe, got name %q", got.Name)
 	}
 }
 
 func TestProbe(t *testing.T) {
+	parsedRecipe := &r.Recipe{
+		Name:         "Chocolate Cake",
+		Ingredients:  []r.Ingredient{{Name: "2 cups flour"}},
+		Instructions: []r.Instruction{{Step: "Mix and bake."}},
+	}
+
 	cases := []struct {
-		name             string
-		client           *LinkClient
-		wantErr          error
-		wantErrNonNil    bool
-		wantRecipeName   string
-		wantIngredients  int
-		wantInstructions int
+		name       string
+		client     *LinkClient
+		wantErr    error
+		wantRecipe *r.Recipe
 	}{
 		{
-			name:             "parses recipe from WP markup",
-			client:           newClientServing(t, recipePage, http.StatusOK),
-			wantRecipeName:   "Chocolate Cake",
-			wantIngredients:  1,
-			wantInstructions: 1,
+			name:       "parses recipe from WP markup",
+			client:     newClientServing(t, recipePage, http.StatusOK),
+			wantRecipe: parsedRecipe,
 		},
 		{
 			name:   "no recipe markup returns empty recipe",
@@ -72,9 +80,9 @@ func TestProbe(t *testing.T) {
 			wantErr: ErrTooManyRequests,
 		},
 		{
-			name:          "non-200 status returns error",
-			client:        newClientServing(t, "", http.StatusNotFound),
-			wantErrNonNil: true,
+			name:    "non-200 status returns error",
+			client:  newClientServing(t, "", http.StatusNotFound),
+			wantErr: errAny,
 		},
 		{
 			name:    "timeout returns ErrProbeTimeout",
@@ -86,8 +94,8 @@ func TestProbe(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			recipe, err := tc.client.Probe(context.Background(), "https://example.com/recipe/")
-			assertErr(t, err, tc.wantErr, tc.wantErrNonNil)
-			assertRecipe(t, recipe, tc.wantRecipeName, tc.wantIngredients, tc.wantInstructions)
+			assertProbeErr(t, err, tc.wantErr)
+			assertProbeRecipe(t, recipe, tc.wantRecipe)
 		})
 	}
 }
