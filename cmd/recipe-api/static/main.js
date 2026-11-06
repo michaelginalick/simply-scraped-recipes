@@ -58,6 +58,26 @@ async function showRecipe(id) {
   }
 }
 
+function copyToClipboard(text) {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    return Promise.resolve();
+  } catch (e) {
+    return Promise.reject(e);
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
 // Creates an element with text-node children to avoid XSS via innerHTML.
 function el(tag, ...children) {
   const node = document.createElement(tag);
@@ -73,7 +93,26 @@ function renderDetail(recipe) {
   detail.hidden = false;
   detail.innerHTML = '';
 
-  detail.appendChild(el('h2', recipe.name));
+  const header = document.createElement('div');
+  header.className = 'recipe-header';
+  header.appendChild(el('h2', recipe.name));
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-btn';
+  copyBtn.textContent = 'Copy link';
+  copyBtn.addEventListener('click', () => {
+    const url = `${window.location.origin}/r/${recipe.id}`;
+    copyToClipboard(url).then(() => {
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy link';
+        copyBtn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+  header.appendChild(copyBtn);
+  detail.appendChild(header);
 
   detail.appendChild(el('h3', 'Ingredients'));
   const ul = document.createElement('ul');
