@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
 
 type RecipeResponse struct {

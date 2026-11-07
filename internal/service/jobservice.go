@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	app "github.com/michaelginalick/recipe-app/pkg/application"
-	pkgstore "github.com/michaelginalick/recipe-app/pkg/store"
+	app "github.com/michaelginalick/recipe-app/internal/application"
+	pkgstore "github.com/michaelginalick/recipe-app/internal/store"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
 
 const defaultScrapeThreads = 2

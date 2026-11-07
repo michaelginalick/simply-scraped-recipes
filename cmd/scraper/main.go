@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/michaelginalick/recipe-app/migrations"
-	app "github.com/michaelginalick/recipe-app/pkg/application"
-	"github.com/michaelginalick/recipe-app/pkg/store"
+	app "github.com/michaelginalick/recipe-app/internal/application"
+	"github.com/michaelginalick/recipe-app/internal/store"
 )
 
 func main() {

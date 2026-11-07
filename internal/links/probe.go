@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 var ErrProbeTimeout = errors.New("probe timed out")

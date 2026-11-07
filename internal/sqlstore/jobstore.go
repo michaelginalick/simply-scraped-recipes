@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	"modernc.org/sqlite"
 	lib "modernc.org/sqlite/lib"
 )

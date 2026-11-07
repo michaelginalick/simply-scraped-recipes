@@ -9,8 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/michaelginalick/recipe-app/pkg/links"
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	"github.com/michaelginalick/recipe-app/internal/links"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type linkFetcher interface {

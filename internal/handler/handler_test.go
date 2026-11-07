@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	d "github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
+	d "github.com/michaelginalick/recipe-app/internal/domain"
+	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
 type stubReader struct {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
+	"github.com/michaelginalick/recipe-app/internal/domain"
+	"github.com/michaelginalick/recipe-app/internal/dto"
 	"github.com/michaelginalick/recipe-app/migrations"
 	_ "modernc.org/sqlite"
 )

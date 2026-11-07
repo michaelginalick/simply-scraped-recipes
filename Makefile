@@ -8,7 +8,7 @@ ROOT	?= www.liveeatlearn.com
 .PHONY: run-api run-scraper build-ts docker-build docker-up docker-down docker-scraper deploy tf-init tf-plan tf-apply tf-destroy
 
 run-api:
-	DB_PATH=$(DB_PATH) go run ./cmd/recipe-api
+	DB_PATH=$(DB_PATH) go run ./cmd/api
 
 run-scraper:
 	DB_PATH=$(DB_PATH) go run ./cmd/scraper -source=$(SOURCE) -debug=$(DEBUG) -rootHost=$(ROOT)
