@@ -109,6 +109,7 @@ func (app *Application) startWorkers(ctx context.Context, cancel context.CancelF
 					if !ok {
 						return
 					}
+					slog.Debug("crawling url", "url", link.String())
 					foundLinks, recipe, err := app.crawl(link)
 					if err != nil {
 						slog.Error("Shutting down crawling due to errors", "error", err)
@@ -137,6 +138,7 @@ func (app *Application) processWorkList(ctx context.Context, pending *atomic.Int
 	for list := range app.worklist {
 		for _, u := range list {
 			if app.seenURLs(u.String()) {
+				slog.Debug("url seen", "url", u.String())
 				continue
 			}
 
@@ -146,6 +148,7 @@ func (app *Application) processWorkList(ctx context.Context, pending *atomic.Int
 				return
 			case app.unseenLinks <- u:
 			}
+			slog.Debug("url queued", "url", u.String())
 		}
 
 		if pending.Add(-1) == 0 {
@@ -161,6 +164,8 @@ func (app *Application) Run() {
 	var wg sync.WaitGroup
 	var pending atomic.Int64
 
+	slog.Info("crawler started", "url", app.source.String(), "threads", app.threadCount)
+
 	pending.Store(1) // account for the seed batch
 	go func() { app.worklist <- []*url.URL{app.source} }()
 
@@ -169,6 +174,8 @@ func (app *Application) Run() {
 	app.processWorkList(ctx, &pending)
 	cancel()
 	wg.Wait()
+
+	slog.Info("crawler finished", "url", app.source.String())
 }
 
 func (app *Application) crawl(u *url.URL) ([]*url.URL, r.Recipe, error) {
@@ -179,6 +186,7 @@ func (app *Application) crawl(u *url.URL) ([]*url.URL, r.Recipe, error) {
 		}
 		slog.Error("error parsing link", "error", err)
 	}
+	slog.Debug("links extracted", "url", u.String(), "count", len(urls))
 	return urls, r, nil
 }
 
@@ -211,5 +219,7 @@ func (app *Application) saveRecipe(recipe r.Recipe, sourceURL string) {
 
 	if isNew {
 		slog.Info("saved recipe", "name", recipe.Name)
+	} else {
+		slog.Debug("duplicate recipe", "name", recipe.Name, "url", sourceURL)
 	}
 }

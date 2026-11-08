@@ -57,7 +57,7 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 
 				u, err := url.Parse(a.Val)
 				if err != nil {
-					slog.Error("parsing a href tag into url")
+					slog.Error("parsing a href tag into url", "href", a.Val, "error", err)
 					continue
 				}
 
