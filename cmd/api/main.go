@@ -15,13 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/handler"
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/middleware"
-	srv "github.com/michaelginalick/recipe-app/cmd/recipe-api/service"
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/sqlstore"
+	"github.com/michaelginalick/recipe-app/internal/handler"
+	"github.com/michaelginalick/recipe-app/internal/middleware"
+	srv "github.com/michaelginalick/recipe-app/internal/service"
+	"github.com/michaelginalick/recipe-app/internal/sqlstore"
 	"github.com/michaelginalick/recipe-app/migrations"
-	"github.com/michaelginalick/recipe-app/pkg/links"
-	pkgstore "github.com/michaelginalick/recipe-app/pkg/store"
+	"github.com/michaelginalick/recipe-app/internal/links"
+	pkgstore "github.com/michaelginalick/recipe-app/internal/store"
 	_ "modernc.org/sqlite"
 )
 

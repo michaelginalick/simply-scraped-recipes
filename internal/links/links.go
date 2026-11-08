@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 	"golang.org/x/net/html"
 )
 

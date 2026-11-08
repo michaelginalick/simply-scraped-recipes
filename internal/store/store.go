@@ -6,7 +6,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type Store struct {

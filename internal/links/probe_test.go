@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type mockTimeoutErr struct{}

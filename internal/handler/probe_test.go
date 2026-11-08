@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
+	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
 type stubProber struct {

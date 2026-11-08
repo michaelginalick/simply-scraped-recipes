@@ -5,9 +5,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
-	"github.com/michaelginalick/recipe-app/pkg/links"
-	r "github.com/michaelginalick/recipe-app/pkg/recipes"
+	"github.com/michaelginalick/recipe-app/internal/dto"
+	"github.com/michaelginalick/recipe-app/internal/links"
+	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type recipeScraper interface {

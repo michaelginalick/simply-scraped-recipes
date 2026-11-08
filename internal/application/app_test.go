@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/michaelginalick/recipe-app/pkg/application"
+	"github.com/michaelginalick/recipe-app/internal/application"
 )
 
 func TestRun_Completes(t *testing.T) {

@@ -37,8 +37,15 @@ func extractRecipe(doc *html.Node) Recipe {
 			case hasClass(n, "wprm-recipe-name"):
 				recipe.Name = textContent(n)
 				return
-
+			case hasClass(n, "wprm-recipe-name wprm-block-text-none"):
+				recipe.Name = textContent(n)
+				return
 			case hasClass(n, "wprm-recipe-ingredient"):
+				if ing := ingredientText(n); ing.Name != "" {
+					recipe.Ingredients = append(recipe.Ingredients, ing)
+				}
+				return
+			case hasClass(n, "wprm-recipe-ingredients"):
 				if ing := ingredientText(n); ing.Name != "" {
 					recipe.Ingredients = append(recipe.Ingredients, ing)
 				}
@@ -49,7 +56,13 @@ func extractRecipe(doc *html.Node) Recipe {
 					recipe.Instructions = append(recipe.Instructions, Instruction{Step: t})
 				}
 				return
+			case hasClass(n, "wprm-recipe-instruction-group"):
+				if t := textContent(n); t != "" {
+					recipe.Instructions = append(recipe.Instructions, Instruction{Step: t})
+				}
+				return
 			}
+
 		}
 
 		for c := n.FirstChild; c != nil; c = c.NextSibling {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
 
 // ingredientSep and instructionSep are ASCII control characters that cannot

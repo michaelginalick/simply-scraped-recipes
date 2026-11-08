@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
+	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
 type Prober interface {

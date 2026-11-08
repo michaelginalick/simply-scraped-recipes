@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/domain"
-	"github.com/michaelginalick/recipe-app/cmd/recipe-api/dto"
+	"github.com/michaelginalick/recipe-app/internal/domain"
+	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
 type sqlWriter struct {
