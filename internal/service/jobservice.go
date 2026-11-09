@@ -50,6 +50,7 @@ func (js *jobService) Submit(ctx context.Context, rawURL string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	slog.Info("job submitted", "id", id, "url", rawURL)
 	return id, nil
 }
 
@@ -92,6 +93,7 @@ func (js *jobService) tryPromote(ctx context.Context) {
 		if job == nil {
 			return
 		}
+		slog.Info("job started", "id", job.ID, "url", job.URL)
 		js.wg.Add(1)
 		go func(j domain.Job) {
 			defer js.wg.Done()
@@ -101,6 +103,8 @@ func (js *jobService) tryPromote(ctx context.Context) {
 }
 
 func (js *jobService) runJob(job domain.Job) {
+	log := slog.With("id", job.ID, "url", job.URL)
+	log.Info("job running")
 	var setupErr error
 	defer func() {
 		var errMsg string
@@ -109,8 +113,11 @@ func (js *jobService) runJob(job domain.Job) {
 		} else if setupErr != nil {
 			errMsg = setupErr.Error()
 		}
+		if errMsg == "" {
+			log.Info("job completed")
+		}
 		if err := js.store.CompleteJob(context.Background(), job.ID, errMsg); err != nil {
-			slog.Error("complete job", "id", job.ID, "error", err)
+			log.Error("complete job", "error", err)
 		}
 	}()
 
