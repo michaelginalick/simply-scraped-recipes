@@ -27,7 +27,7 @@ push-db:
 		sudo systemctl start recipe-app"
 
 deploy:
-	GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -o /tmp/recipe-api ./cmd/recipe-api
+	GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -o /tmp/recipe-api ./cmd/api
 	scp /tmp/recipe-api ec2-user@$(HOST):/tmp/recipe-api
 	ssh ec2-user@$(HOST) "sudo mv /tmp/recipe-api /opt/recipe-app/recipe-api && sudo chmod +x /opt/recipe-app/recipe-api && sudo systemctl restart recipe-app"
 
@@ -49,8 +49,8 @@ tf-destroy:
 
 ## Docker
 docker-build:
-	docker build --build-arg CMD=recipe-api -t recipe-api .
-	docker build --build-arg CMD=scraper    -t recipe-scraper .
+	docker build --build-arg CMD=api     -t recipe-api .
+	docker build --build-arg CMD=scraper -t recipe-scraper .
 
 docker-up:
 	docker compose up --build api

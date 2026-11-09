@@ -24,23 +24,27 @@ Live at [simplyscrapedrecipes.com](https://simplyscrapedrecipes.com).
 
 ```
 cmd/
-  scraper/       — CLI that fetches and parses recipe pages
-  recipe-api/
-    handler/     — HTTP handlers (parse input, call domain, emit output)
-    sqlstore/    — SQLite implementation of domain interfaces
-    middleware/  — logging, recovery, JSON content-type
+  api/           — API server entry point
     static/      — HTML/CSS/JS frontend
-pkg/
-  recipes/       — domain types, interfaces, errors
-  links/         — HTTP link fetching
+  scraper/       — CLI scraper entry point
+internal/
+  domain/        — core types and errors
+  dto/           — request/response types
+  handler/       — HTTP handlers
+  middleware/    — logging, recovery, JSON content-type
+  service/       — job and probe services
+  sqlstore/      — SQLite persistence
   application/   — scraper orchestration
+  links/         — HTTP link fetching and parsing
+  recipes/       — recipe extraction from HTML
+  store/         — scraper write store
 migrations/      — schema SQL
 terraform/       — Lightsail infrastructure
 ```
 
 ## Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - SQLite (`sqlite3` CLI for DB management)
 - Docker (optional)
 
@@ -64,8 +68,12 @@ The API serves the frontend at `http://localhost:8080`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/search?q=<query>` | Full-text search recipes |
-| `GET` | `/recipe/{id}` | Get a recipe by ID |
+| `GET` | `/recipe/{id}` | Get a recipe by ID (JSON) |
+| `GET` | `/r/{id}` | Shareable recipe page |
 | `POST` | `/recipe` | Create a recipe |
+| `POST` | `/jobs` | Submit a URL to scrape |
+| `GET` | `/jobs/{id}` | Get scrape job status |
+| `POST` | `/probe` | Test whether a URL contains a recipe |
 
 All JSON responses are wrapped in `{"data": ...}`.
 
