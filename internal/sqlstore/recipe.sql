@@ -33,6 +33,15 @@ WHERE recipe_search MATCH @query
 ORDER BY rank
 
 
+-- name: ListRecipes
+SELECT
+    r.id,
+    r.name,
+    GROUP_CONCAT(i.name, char(31)) AS ingredients
+FROM recipes r
+LEFT JOIN ingredients i ON i.recipe_id = r.id
+GROUP BY r.id
+
 -- name: SchemaExists
 SELECT (
     SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name IN ('recipes', 'scrape_jobs')

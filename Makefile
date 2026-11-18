@@ -1,9 +1,9 @@
 DB_PATH ?= ./recipes.db
-SOURCE  ?= https://www.liveeatlearn.com/vegetable-pot-pie-casserole/
+SOURCE  ?= https://delightfuladventures.com/lentil-sweet-potato-chili/
 PORT    ?= 8080
 DEBUG   ?= false
 HOST    ?= 100.56.133.20
-ROOT	?= www.liveeatlearn.com
+ROOT	?= delightfuladventures.com
 
 .PHONY: run-api run-scraper build-ts docker-build docker-up docker-down docker-scraper deploy tf-init tf-plan tf-apply tf-destroy
 

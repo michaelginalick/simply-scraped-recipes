@@ -37,6 +37,10 @@ type JobService interface {
 	Submit(ctx context.Context, rawURL string) (id string, err error)
 }
 
+type Rebuilder interface {
+	Rebuild(ctx context.Context) error
+}
+
 // ftsSpecial matches characters that could alter FTS5 query semantics or cause parse errors.
 // e.g. input: `"chocolate" OR *cake^;` → stripped to `chocolate  OR cake `
 var ftsSpecial = regexp.MustCompile(`["*^():+\-;]`)
@@ -154,6 +158,17 @@ func GetJobHandler(reader Reader) http.HandlerFunc {
 	})
 }
 
+func RebuildSearchHandler(rebuilder Rebuilder) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := rebuilder.Rebuild(r.Context()); err != nil {
+			slog.Error("rebuild search index", "error", err)
+			http.Error(w, "failed to rebuild search index", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func SearchHandler(reader Reader) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := sanitizeQuery(r.URL.Query().Get("q"))
@@ -170,9 +185,7 @@ func SearchHandler(reader Reader) http.HandlerFunc {
 			return
 		}
 
-		resp := dto.NewRecipesResponse(results)
-
-		if err := json.NewEncoder(w).Encode(envelope[[]dto.RecipeResponse]{Data: resp}); err != nil {
+		if err := json.NewEncoder(w).Encode(envelope[[]dto.RecipeResponse]{Data: dto.NewRecipesResponse(results)}); err != nil {
 			return
 		}
 	})

@@ -34,7 +34,7 @@ func newTestDB(t *testing.T) *sql.DB {
 func seedRecipe(t *testing.T, db *sql.DB, r dto.CreateRecipeRequest) int64 {
 	t.Helper()
 
-	w := NewSQLWriter(db)
+	w := NewSQLWriter(db, nil)
 	id, err := w.CreateRecipe(context.Background(), r)
 	if err != nil {
 		t.Fatalf("seed recipe: %v", err)
@@ -45,7 +45,7 @@ func seedRecipe(t *testing.T, db *sql.DB, r dto.CreateRecipeRequest) int64 {
 
 func TestSQLWriter_CreateRecipe(t *testing.T) {
 	db := newTestDB(t)
-	w := NewSQLWriter(db)
+	w := NewSQLWriter(db, nil)
 
 	req := dto.CreateRecipeRequest{
 		Name:         "Pasta",
@@ -65,7 +65,7 @@ func TestSQLWriter_CreateRecipe(t *testing.T) {
 
 func TestSQLWriter_CreateRecipe_Duplicate(t *testing.T) {
 	db := newTestDB(t)
-	w := NewSQLWriter(db)
+	w := NewSQLWriter(db, nil)
 
 	req := dto.CreateRecipeRequest{Name: "Pasta"}
 

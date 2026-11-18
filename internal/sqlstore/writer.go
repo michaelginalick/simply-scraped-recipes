@@ -9,12 +9,17 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
-type sqlWriter struct {
-	db *sql.DB
+type trieInserter interface {
+	Insert(id, name string, ingredients []string)
 }
 
-func NewSQLWriter(db *sql.DB) *sqlWriter {
-	return &sqlWriter{db: db}
+type sqlWriter struct {
+	db   *sql.DB
+	trie trieInserter
+}
+
+func NewSQLWriter(db *sql.DB, trie trieInserter) *sqlWriter {
+	return &sqlWriter{db: db, trie: trie}
 }
 
 func (w *sqlWriter) CreateRecipe(ctx context.Context, r dto.CreateRecipeRequest) (int64, error) {
@@ -60,5 +65,17 @@ func (w *sqlWriter) CreateRecipe(ctx context.Context, r dto.CreateRecipeRequest)
 		}
 	}
 
-	return id, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	if w.trie != nil {
+		ingNames := make([]string, len(r.Ingredients))
+		for i, ing := range r.Ingredients {
+			ingNames[i] = ing.Name
+		}
+		w.trie.Insert(fmt.Sprintf("%d", id), r.Name, ingNames)
+	}
+
+	return id, nil
 }

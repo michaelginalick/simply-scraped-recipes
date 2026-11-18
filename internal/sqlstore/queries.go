@@ -18,6 +18,7 @@ var (
 	createIngredientQuery  = mustQuery(recipeSQL, "CreateIngredient")
 	createInstructionQuery = mustQuery(recipeSQL, "CreateInstruction")
 	searchRecipeQuery      = mustQuery(recipeSQL, "SearchRecipe")
+	listRecipesQuery       = mustQuery(recipeSQL, "ListRecipes")
 	schemaExistsQuery      = mustQuery(recipeSQL, "SchemaExists")
 
 	insertJobQuery        = mustQuery(jobSQL, "InsertJob")

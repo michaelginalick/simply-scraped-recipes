@@ -16,12 +16,13 @@ import (
 	"time"
 
 	"github.com/michaelginalick/recipe-app/internal/handler"
+	"github.com/michaelginalick/recipe-app/internal/links"
 	"github.com/michaelginalick/recipe-app/internal/middleware"
+	"github.com/michaelginalick/recipe-app/internal/search"
 	srv "github.com/michaelginalick/recipe-app/internal/service"
 	"github.com/michaelginalick/recipe-app/internal/sqlstore"
-	"github.com/michaelginalick/recipe-app/migrations"
-	"github.com/michaelginalick/recipe-app/internal/links"
 	pkgstore "github.com/michaelginalick/recipe-app/internal/store"
+	"github.com/michaelginalick/recipe-app/migrations"
 	_ "modernc.org/sqlite"
 )
 
@@ -56,7 +57,13 @@ func main() {
 	defer readDB.Close()
 
 	reader := sqlstore.NewSQLReader(readDB)
-	recipeWriter := sqlstore.NewSQLWriter(writeDB)
+
+	searchReader, err := search.NewReaderWithIndex(ctx, reader)
+	if err != nil {
+		log.Fatal("build search index: ", err)
+	}
+
+	recipeWriter := sqlstore.NewSQLWriter(writeDB, searchReader.Trie())
 	jobStore := sqlstore.NewSQLJobStore(writeDB)
 
 	if err := jobStore.RecoverJobs(ctx); err != nil {
@@ -85,7 +92,8 @@ func main() {
 	mux.Handle("GET /recipe/{id}", jsonMW.ThenFunc(handler.GetHandler(reader)))
 	mux.Handle("POST /recipe", mw.ThenFunc(handler.CreateHandler(recipeWriter)))
 
-	mux.Handle("GET /search", jsonMW.ThenFunc(handler.SearchHandler(reader)))
+	mux.Handle("GET /search", jsonMW.ThenFunc(handler.SearchHandler(searchReader)))
+	mux.Handle("POST /search/rebuild", jsonMW.ThenFunc(handler.RebuildSearchHandler(searchReader)))
 
 	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
 	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))

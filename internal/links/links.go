@@ -33,11 +33,11 @@ func NewLinkClient(transport http.RoundTripper) *LinkClient {
 
 func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, r.Recipe, error) {
 	doc, err, statusCode := fetchHTMLFromLink(link.Client, givenURL)
-	
+
 	if statusCode == http.StatusTooManyRequests {
 		return nil, r.Recipe{}, ErrTooManyRequests
 	}
-	
+
 	if err != nil || doc == nil {
 		return nil, r.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
 	}
@@ -62,7 +62,6 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 				}
 
 				fullURL := baseURL.ResolveReference(u)
-
 				// ignore bad, non-root, and urls with a query param
 				if fullURL.Host != "" && fullURL.Host == scopedHost &&
 					len(fullURL.RawQuery) == 0 &&
@@ -100,7 +99,7 @@ func fetchHTMLFromLink(client *http.Client, rawURL string) (*html.Node, error, i
 	}
 
 	h, err := html.Parse(resp.Body)
-	
+
 	return h, err, resp.StatusCode
 }
 

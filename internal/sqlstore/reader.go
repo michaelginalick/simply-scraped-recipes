@@ -131,6 +131,34 @@ func (r sqlReader) GetJob(ctx context.Context, id string) (domain.Job, error) {
 	return job, nil
 }
 
+func (r sqlReader) ListRecipes(ctx context.Context) ([]domain.Recipe, error) {
+	rows, err := r.db.QueryContext(ctx, listRecipesQuery)
+	if err != nil {
+		return nil, fmt.Errorf("list recipes: %w", err)
+	}
+	defer rows.Close()
+
+	var result []domain.Recipe
+	for rows.Next() {
+		var id int64
+		var name string
+		var ings sql.NullString
+
+		if err := rows.Scan(&id, &name, &ings); err != nil {
+			return nil, fmt.Errorf("scan recipe: %w", err)
+		}
+
+		rec := domain.Recipe{ID: fmt.Sprintf("%d", id), Name: name}
+		if ings.Valid {
+			for _, ing := range strings.Split(ings.String, string(ingredientSep)) {
+				rec.Ingredients = append(rec.Ingredients, domain.Ingredient{Name: ing})
+			}
+		}
+		result = append(result, rec)
+	}
+	return result, rows.Err()
+}
+
 func (d dbRecipe) toDomain() domain.Recipe {
 	r := domain.Recipe{Name: d.name}
 
