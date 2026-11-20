@@ -9,7 +9,6 @@ import (
 	"time"
 
 	app "github.com/michaelginalick/recipe-app/internal/application"
-	pkgstore "github.com/michaelginalick/recipe-app/internal/store"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
 )
@@ -26,13 +25,13 @@ type jobStore interface {
 
 type jobService struct {
 	store       jobStore
-	recipeStore pkgstore.Store
+	recipeStore app.RecipeStore
 	dispatchCh  chan struct{}
 	maxJobs     int
 	wg          sync.WaitGroup
 }
 
-func NewJobService(store jobStore, recipeStore pkgstore.Store, maxJobs int) *jobService {
+func NewJobService(store jobStore, recipeStore app.RecipeStore, maxJobs int) *jobService {
 	return &jobService{
 		store:       store,
 		recipeStore: recipeStore,

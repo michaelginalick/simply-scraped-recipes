@@ -3,10 +3,12 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
-	"github.com/michaelginalick/recipe-app/internal/dto"
+	"modernc.org/sqlite"
+	lib "modernc.org/sqlite/lib"
 )
 
 type sqlWriter struct {
@@ -17,48 +19,53 @@ func NewSQLWriter(db *sql.DB) *sqlWriter {
 	return &sqlWriter{db: db}
 }
 
-func (w *sqlWriter) CreateRecipe(ctx context.Context, r dto.CreateRecipeRequest) (int64, error) {
+func (w *sqlWriter) Save(ctx context.Context, r domain.Recipe, sourceURL string) (bool, error) {
 	tx, err := w.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("begin transaction: %w", err)
+		return false, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	result, err := tx.ExecContext(ctx, createRecipeQuery, sql.Named("name", r.Name))
+	result, err := tx.ExecContext(ctx, createRecipeQuery,
+		sql.Named("name", r.Name),
+		sql.Named("source_url", sourceURL),
+	)
 	if err != nil {
-		return 0, fmt.Errorf("insert recipe: %w", err)
+		var sqlErr *sqlite.Error
+		if errors.As(err, &sqlErr) && sqlErr.Code() == lib.SQLITE_CONSTRAINT_UNIQUE {
+			return false, domain.ErrAlreadyExists
+		}
+		return false, fmt.Errorf("insert recipe: %w", err)
 	}
 
 	n, _ := result.RowsAffected()
 	if n == 0 {
-		return 0, domain.ErrAlreadyExists
+		return false, tx.Commit()
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("get last insert id: %w", err)
+		return false, fmt.Errorf("get last insert id: %w", err)
 	}
 
 	for _, ing := range r.Ingredients {
-		_, err := tx.ExecContext(ctx, createIngredientQuery,
+		if _, err := tx.ExecContext(ctx, createIngredientQuery,
 			sql.Named("recipe_id", id),
 			sql.Named("name", ing.Name),
-		)
-		if err != nil {
-			return 0, fmt.Errorf("insert ingredient: %w", err)
+		); err != nil {
+			return false, fmt.Errorf("insert ingredient: %w", err)
 		}
 	}
 
 	for i, inst := range r.Instructions {
-		_, err := tx.ExecContext(ctx, createInstructionQuery,
+		if _, err := tx.ExecContext(ctx, createInstructionQuery,
 			sql.Named("recipe_id", id),
 			sql.Named("step_num", i+1),
 			sql.Named("step", inst.Step),
-		)
-		if err != nil {
-			return 0, fmt.Errorf("insert instruction: %w", err)
+		); err != nil {
+			return false, fmt.Errorf("insert instruction: %w", err)
 		}
 	}
 
-	return id, tx.Commit()
+	return true, tx.Commit()
 }

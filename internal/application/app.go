@@ -19,7 +19,7 @@ type linkFetcher interface {
 
 // RecipeStore persists recipes; a duplicate name is a no-op.
 type RecipeStore interface {
-	Save(domain.Recipe, string) (bool, error)
+	Save(ctx context.Context, r domain.Recipe, sourceURL string) (bool, error)
 }
 
 const (
@@ -115,7 +115,7 @@ func (app *Application) startWorkers(ctx context.Context, cancel context.CancelF
 						slog.Error("Shutting down crawling due to errors", "error", err)
 						cancel()
 					}
-					app.saveRecipe(recipe, link.String())
+					app.saveRecipe(ctx, recipe, link.String())
 
 					// Send without blocking the worker so it can keep reading
 					// from unseenLinks while processWorkList is busy.
@@ -201,7 +201,7 @@ func (app *Application) seenURLs(urlStr string) bool {
 	return false
 }
 
-func (app *Application) saveRecipe(recipe domain.Recipe, sourceURL string) {
+func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) {
 	if app.store == nil {
 		return
 	}
@@ -211,7 +211,7 @@ func (app *Application) saveRecipe(recipe domain.Recipe, sourceURL string) {
 		return
 	}
 
-	isNew, err := app.store.Save(recipe, sourceURL)
+	isNew, err := app.store.Save(ctx, recipe, sourceURL)
 	if err != nil {
 		slog.Error("error saving recipe", "error", err)
 		return

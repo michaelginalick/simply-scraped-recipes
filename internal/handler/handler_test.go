@@ -33,12 +33,12 @@ func (s stubReader) GetJob(_ context.Context, _ string) (d.Job, error) {
 }
 
 type stubWriter struct {
-	id  int64
-	err error
+	isNew bool
+	err   error
 }
 
-func (s stubWriter) CreateRecipe(_ context.Context, _ dto.CreateRecipeRequest) (int64, error) {
-	return s.id, s.err
+func (s stubWriter) Save(_ context.Context, _ d.Recipe, _ string) (bool, error) {
+	return s.isNew, s.err
 }
 
 func TestGetHandler_OK(t *testing.T) {
@@ -110,7 +110,7 @@ func TestCreateHandler_Created(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
-	CreateHandler(stubWriter{id: 1}).ServeHTTP(rr, req)
+	CreateHandler(stubWriter{isNew: true}).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusCreated {
 		t.Errorf("got status %d, want %d", rr.Code, http.StatusCreated)
@@ -136,7 +136,7 @@ func TestCreateHandler_AlreadyExists(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
-	CreateHandler(stubWriter{err: d.ErrAlreadyExists}).ServeHTTP(rr, req)
+	CreateHandler(stubWriter{isNew: false}).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusConflict {
 		t.Errorf("got status %d, want %d", rr.Code, http.StatusConflict)
