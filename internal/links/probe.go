@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
+	"github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 var ErrProbeTimeout = errors.New("probe timed out")
@@ -24,7 +24,7 @@ func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, 
 		return domain.Recipe{}, err
 	}
 
-	return r.ParseRecipe(doc), nil
+	return recipes.ParseRecipe(doc), nil
 }
 
 func isTimeout(err error) bool {
