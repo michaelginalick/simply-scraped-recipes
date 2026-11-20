@@ -9,17 +9,17 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	"github.com/michaelginalick/recipe-app/internal/links"
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type linkFetcher interface {
-	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, r.Recipe, error)
+	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, domain.Recipe, error)
 }
 
 // RecipeStore persists recipes; a duplicate name is a no-op.
 type RecipeStore interface {
-	Save(r.Recipe, string) (bool, error)
+	Save(domain.Recipe, string) (bool, error)
 }
 
 const (
@@ -178,7 +178,7 @@ func (app *Application) Run() {
 	slog.Info("crawler finished", "url", app.source.String())
 }
 
-func (app *Application) crawl(u *url.URL) ([]*url.URL, r.Recipe, error) {
+func (app *Application) crawl(u *url.URL) ([]*url.URL, domain.Recipe, error) {
 	urls, r, err := app.linkClient.ExtractRecipeLinks(u.String(), app.rootHost)
 	if err != nil {
 		if errors.Is(err, links.ErrTooManyRequests) {
@@ -201,7 +201,7 @@ func (app *Application) seenURLs(urlStr string) bool {
 	return false
 }
 
-func (app *Application) saveRecipe(recipe r.Recipe, sourceURL string) {
+func (app *Application) saveRecipe(recipe domain.Recipe, sourceURL string) {
 	if app.store == nil {
 		return
 	}

@@ -3,32 +3,18 @@ package recipes
 import (
 	"strings"
 
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	"golang.org/x/net/html"
 )
 
-type Recipe struct {
-	ID           string
-	Name         string
-	Ingredients  []Ingredient
-	Instructions []Instruction
-}
-
-type Ingredient struct {
-	Name string
-}
-
-type Instruction struct {
-	Step string
-}
-
 // ParseRecipe extracts the recipe name, ingredients, and instructions
 // from WP Recipe Maker plugin markup.
-func ParseRecipe(doc *html.Node) Recipe {
+func ParseRecipe(doc *html.Node) domain.Recipe {
 	return extractRecipe(doc)
 }
 
-func extractRecipe(doc *html.Node) Recipe {
-	var recipe Recipe
+func extractRecipe(doc *html.Node) domain.Recipe {
+	var recipe domain.Recipe
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
@@ -53,12 +39,12 @@ func extractRecipe(doc *html.Node) Recipe {
 
 			case hasClass(n, "wprm-recipe-instruction-text"):
 				if t := textContent(n); t != "" {
-					recipe.Instructions = append(recipe.Instructions, Instruction{Step: t})
+					recipe.Instructions = append(recipe.Instructions, domain.Instruction{Step: t})
 				}
 				return
 			case hasClass(n, "wprm-recipe-instruction-group"):
 				if t := textContent(n); t != "" {
-					recipe.Instructions = append(recipe.Instructions, Instruction{Step: t})
+					recipe.Instructions = append(recipe.Instructions, domain.Instruction{Step: t})
 				}
 				return
 			}
@@ -76,7 +62,7 @@ func extractRecipe(doc *html.Node) Recipe {
 
 // ingredientText builds an Ingredient from a wprm-recipe-ingredient <li> node.
 // It uses amount and unit from the first (imperial) unit system, then the name and notes.
-func ingredientText(n *html.Node) Ingredient {
+func ingredientText(n *html.Node) domain.Ingredient {
 	var parts []string
 
 	var walk func(*html.Node)
@@ -109,7 +95,7 @@ func ingredientText(n *html.Node) Ingredient {
 	}
 
 	walk(n)
-	return Ingredient{Name: strings.Join(parts, " ")}
+	return domain.Ingredient{Name: strings.Join(parts, " ")}
 }
 
 func hasClass(n *html.Node, class string) bool {

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	"github.com/michaelginalick/recipe-app/internal/dto"
 	"github.com/michaelginalick/recipe-app/internal/links"
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type recipeScraper interface {
-	Probe(ctx context.Context, rawURL string) (r.Recipe, error)
+	Probe(ctx context.Context, rawURL string) (domain.Recipe, error)
 }
 
 type ProbeService struct {

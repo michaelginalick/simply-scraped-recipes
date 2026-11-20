@@ -5,25 +5,25 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	"github.com/michaelginalick/recipe-app/internal/dto"
 	"github.com/michaelginalick/recipe-app/internal/links"
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 type stubScraper struct {
-	recipe r.Recipe
+	recipe domain.Recipe
 	err    error
 }
 
-func (s stubScraper) Probe(_ context.Context, _ string) (r.Recipe, error) {
+func (s stubScraper) Probe(_ context.Context, _ string) (domain.Recipe, error) {
 	return s.recipe, s.err
 }
 
 func TestProbeService(t *testing.T) {
-	fullRecipe := r.Recipe{
+	fullRecipe := domain.Recipe{
 		Name:         "Chocolate Cake",
-		Ingredients:  []r.Ingredient{{Name: "flour"}, {Name: "sugar"}},
-		Instructions: []r.Instruction{{Step: "Mix."}, {Step: "Bake."}},
+		Ingredients:  []domain.Ingredient{{Name: "flour"}, {Name: "sugar"}},
+		Instructions: []domain.Instruction{{Step: "Mix."}, {Step: "Bake."}},
 	}
 
 	cases := []struct {
@@ -41,7 +41,7 @@ func TestProbeService(t *testing.T) {
 		},
 		{
 			name:    "no recipe markup",
-			scraper: stubScraper{recipe: r.Recipe{}},
+			scraper: stubScraper{recipe: domain.Recipe{}},
 		},
 		{
 			name:      "timeout",
