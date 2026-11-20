@@ -3,9 +3,12 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
+	"modernc.org/sqlite"
+	lib "modernc.org/sqlite/lib"
 )
 
 type sqlWriter struct {
@@ -28,6 +31,10 @@ func (w *sqlWriter) Save(ctx context.Context, r domain.Recipe, sourceURL string)
 		sql.Named("source_url", sourceURL),
 	)
 	if err != nil {
+		var sqlErr *sqlite.Error
+		if errors.As(err, &sqlErr) && sqlErr.Code() == lib.SQLITE_CONSTRAINT_UNIQUE {
+			return false, domain.ErrAlreadyExists
+		}
 		return false, fmt.Errorf("insert recipe: %w", err)
 	}
 

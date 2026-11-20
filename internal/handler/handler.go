@@ -89,6 +89,10 @@ func CreateHandler(writer Writer) http.HandlerFunc {
 
 		isNew, err := writer.Save(r.Context(), req.ToDomain(), "")
 		if err != nil {
+			if errors.Is(err, d.ErrAlreadyExists) {
+				http.Error(w, "recipe already exists", http.StatusConflict)
+				return
+			}
 			slog.Error("create recipe", "name", req.Name, "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
