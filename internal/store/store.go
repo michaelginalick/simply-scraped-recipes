@@ -6,7 +6,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
 
 type Store struct {
@@ -51,7 +51,7 @@ func ApplySchema(db *sql.DB, schema string) error {
 
 // Save inserts the recipe and returns true if it was newly inserted.
 // A duplicate name is silently ignored via the UNIQUE constraint.
-func (s Store) Save(recipe r.Recipe, sourceURL string) (bool, error) {
+func (s Store) Save(recipe domain.Recipe, sourceURL string) (bool, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return false, err

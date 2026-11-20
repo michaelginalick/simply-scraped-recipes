@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/michaelginalick/recipe-app/internal/domain"
 	r "github.com/michaelginalick/recipe-app/internal/recipes"
 	"golang.org/x/net/html"
 )
@@ -31,20 +32,20 @@ func NewLinkClient(transport http.RoundTripper) *LinkClient {
 	return &LinkClient{&http.Client{Transport: transport}}
 }
 
-func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, r.Recipe, error) {
+func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
 	doc, err, statusCode := fetchHTMLFromLink(link.Client, givenURL)
-	
+
 	if statusCode == http.StatusTooManyRequests {
-		return nil, r.Recipe{}, ErrTooManyRequests
+		return nil, domain.Recipe{}, ErrTooManyRequests
 	}
-	
+
 	if err != nil || doc == nil {
-		return nil, r.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
+		return nil, domain.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
 	}
 
 	baseURL, err := url.Parse(givenURL)
 	if err != nil {
-		return nil, r.Recipe{}, fmt.Errorf("invalid base URL: %w", err)
+		return nil, domain.Recipe{}, fmt.Errorf("invalid base URL: %w", err)
 	}
 
 	var urls []*url.URL

@@ -51,6 +51,12 @@ func (js *jobService) Submit(ctx context.Context, rawURL string) (string, error)
 		return "", err
 	}
 	slog.Info("job submitted", "id", id, "url", rawURL)
+
+	// non-blocking send - if a dispatch is already pending, skip
+	select {
+	case js.dispatchCh <- struct{}{}:
+	default:
+	}
 	return id, nil
 }
 
@@ -76,7 +82,9 @@ func (js *jobService) dispatch(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
+			case <-ticker.C: // sweep for jobs missed during downtime
+				js.tryPromote(ctx)
+			case <-js.dispatchCh: // immediate trigger on new submission
 				js.tryPromote(ctx)
 			}
 		}

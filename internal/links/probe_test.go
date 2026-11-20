@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	r "github.com/michaelginalick/recipe-app/internal/recipes"
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
 
 type mockTimeoutErr struct{}
@@ -35,7 +35,7 @@ func assertProbeErr(t *testing.T, err, want error) {
 	}
 }
 
-func assertProbeRecipe(t *testing.T, got r.Recipe, want *r.Recipe) {
+func assertProbeRecipe(t *testing.T, got domain.Recipe, want *domain.Recipe) {
 	t.Helper()
 	if want != nil {
 		if got.Name != want.Name {
@@ -53,17 +53,17 @@ func assertProbeRecipe(t *testing.T, got r.Recipe, want *r.Recipe) {
 }
 
 func TestProbe(t *testing.T) {
-	parsedRecipe := &r.Recipe{
+	parsedRecipe := &domain.Recipe{
 		Name:         "Chocolate Cake",
-		Ingredients:  []r.Ingredient{{Name: "2 cups flour"}},
-		Instructions: []r.Instruction{{Step: "Mix and bake."}},
+		Ingredients:  []domain.Ingredient{{Name: "2 cups flour"}},
+		Instructions: []domain.Instruction{{Step: "Mix and bake."}},
 	}
 
 	cases := []struct {
 		name       string
 		client     *LinkClient
 		wantErr    error
-		wantRecipe *r.Recipe
+		wantRecipe *domain.Recipe
 	}{
 		{
 			name:       "parses recipe from WP markup",
