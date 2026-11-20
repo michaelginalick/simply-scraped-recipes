@@ -10,7 +10,7 @@ FROM recipes r
 WHERE r.id = @id
 
 -- name: CreateRecipe
-INSERT OR IGNORE INTO recipes (name) VALUES (@name)
+INSERT OR IGNORE INTO recipes (name, source_url) VALUES (@name, @source_url)
 
 -- name: CreateIngredient
 INSERT INTO ingredients (recipe_id, name) VALUES (@recipe_id, @name)

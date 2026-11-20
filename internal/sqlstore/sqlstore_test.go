@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
-	"github.com/michaelginalick/recipe-app/internal/dto"
 	"github.com/michaelginalick/recipe-app/migrations"
 	_ "modernc.org/sqlite"
 )
@@ -31,63 +30,70 @@ func newTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func seedRecipe(t *testing.T, db *sql.DB, r dto.CreateRecipeRequest) int64 {
+func seedRecipe(t *testing.T, db *sql.DB, r domain.Recipe) int64 {
 	t.Helper()
 
 	w := NewSQLWriter(db)
-	id, err := w.CreateRecipe(context.Background(), r)
-	if err != nil {
+	if _, err := w.Save(context.Background(), r, ""); err != nil {
 		t.Fatalf("seed recipe: %v", err)
+	}
+
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM recipes WHERE name = ?`, r.Name).Scan(&id); err != nil {
+		t.Fatalf("seed recipe get id: %v", err)
 	}
 
 	return id
 }
 
-func TestSQLWriter_CreateRecipe(t *testing.T) {
+func TestSQLWriter_Save(t *testing.T) {
 	db := newTestDB(t)
 	w := NewSQLWriter(db)
 
-	req := dto.CreateRecipeRequest{
+	r := domain.Recipe{
 		Name:         "Pasta",
-		Ingredients:  []dto.IngredientRequest{{Name: "noodles"}, {Name: "salt"}},
-		Instructions: []dto.InstructionRequest{{Step: "Boil water."}, {Step: "Cook pasta."}},
+		Ingredients:  []domain.Ingredient{{Name: "noodles"}, {Name: "salt"}},
+		Instructions: []domain.Instruction{{Step: "Boil water."}, {Step: "Cook pasta."}},
 	}
 
-	id, err := w.CreateRecipe(context.Background(), req)
+	isNew, err := w.Save(context.Background(), r, "https://example.com/pasta")
 	if err != nil {
-		t.Fatalf("CreateRecipe: %v", err)
+		t.Fatalf("Save: %v", err)
 	}
 
-	if id <= 0 {
-		t.Errorf("got id %d, want > 0", id)
+	if !isNew {
+		t.Error("got isNew=false, want true for first insert")
 	}
 }
 
-func TestSQLWriter_CreateRecipe_Duplicate(t *testing.T) {
+func TestSQLWriter_Save_Duplicate(t *testing.T) {
 	db := newTestDB(t)
 	w := NewSQLWriter(db)
 
-	req := dto.CreateRecipeRequest{Name: "Pasta"}
+	r := domain.Recipe{Name: "Pasta"}
 
-	if _, err := w.CreateRecipe(context.Background(), req); err != nil {
+	if _, err := w.Save(context.Background(), r, ""); err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 
-	_, err := w.CreateRecipe(context.Background(), req)
-	if !errors.Is(err, domain.ErrAlreadyExists) {
-		t.Errorf("got %v, want ErrAlreadyExists", err)
+	isNew, err := w.Save(context.Background(), r, "")
+	if err != nil {
+		t.Fatalf("second insert: %v", err)
+	}
+	if isNew {
+		t.Error("got isNew=true, want false for duplicate")
 	}
 }
 
 func TestSQLReader_GetRecipe(t *testing.T) {
 	db := newTestDB(t)
 
-	req := dto.CreateRecipeRequest{
+	r := domain.Recipe{
 		Name:         "Avocado Toast",
-		Ingredients:  []dto.IngredientRequest{{Name: "avocado"}, {Name: "bread"}},
-		Instructions: []dto.InstructionRequest{{Step: "Toast bread."}, {Step: "Mash avocado."}},
+		Ingredients:  []domain.Ingredient{{Name: "avocado"}, {Name: "bread"}},
+		Instructions: []domain.Instruction{{Step: "Toast bread."}, {Step: "Mash avocado."}},
 	}
-	id := seedRecipe(t, db, req)
+	id := seedRecipe(t, db, r)
 
 	reader := NewSQLReader(db)
 	got, err := reader.GetRecipe(context.Background(), fmt.Sprintf("%d", id))
@@ -95,16 +101,16 @@ func TestSQLReader_GetRecipe(t *testing.T) {
 		t.Fatalf("GetRecipe: %v", err)
 	}
 
-	if got.Name != req.Name {
-		t.Errorf("got name %q, want %q", got.Name, req.Name)
+	if got.Name != r.Name {
+		t.Errorf("got name %q, want %q", got.Name, r.Name)
 	}
 
-	if len(got.Ingredients) != len(req.Ingredients) {
-		t.Errorf("got %d ingredients, want %d", len(got.Ingredients), len(req.Ingredients))
+	if len(got.Ingredients) != len(r.Ingredients) {
+		t.Errorf("got %d ingredients, want %d", len(got.Ingredients), len(r.Ingredients))
 	}
 
-	if len(got.Instructions) != len(req.Instructions) {
-		t.Errorf("got %d instructions, want %d", len(got.Instructions), len(req.Instructions))
+	if len(got.Instructions) != len(r.Instructions) {
+		t.Errorf("got %d instructions, want %d", len(got.Instructions), len(r.Instructions))
 	}
 }
 
@@ -121,13 +127,13 @@ func TestSQLReader_GetRecipe_NotFound(t *testing.T) {
 func TestSQLReader_SearchRecipe(t *testing.T) {
 	db := newTestDB(t)
 
-	seedRecipe(t, db, dto.CreateRecipeRequest{
+	seedRecipe(t, db, domain.Recipe{
 		Name:        "Chocolate Cake",
-		Ingredients: []dto.IngredientRequest{{Name: "chocolate"}, {Name: "flour"}},
+		Ingredients: []domain.Ingredient{{Name: "chocolate"}, {Name: "flour"}},
 	})
-	seedRecipe(t, db, dto.CreateRecipeRequest{
+	seedRecipe(t, db, domain.Recipe{
 		Name:        "Banana Bread",
-		Ingredients: []dto.IngredientRequest{{Name: "banana"}, {Name: "flour"}},
+		Ingredients: []domain.Ingredient{{Name: "banana"}, {Name: "flour"}},
 	})
 
 	reader := NewSQLReader(db)
@@ -148,9 +154,9 @@ func TestSQLReader_SearchRecipe(t *testing.T) {
 func TestSQLReader_SearchRecipe_CaseInsensitive(t *testing.T) {
 	db := newTestDB(t)
 
-	seedRecipe(t, db, dto.CreateRecipeRequest{
+	seedRecipe(t, db, domain.Recipe{
 		Name:        "Lentil Soup",
-		Ingredients: []dto.IngredientRequest{{Name: "lentils"}},
+		Ingredients: []domain.Ingredient{{Name: "lentils"}},
 	})
 
 	reader := NewSQLReader(db)

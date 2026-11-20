@@ -16,7 +16,7 @@ import (
 )
 
 type Writer interface {
-	CreateRecipe(ctx context.Context, r dto.CreateRecipeRequest) (int64, error)
+	Save(ctx context.Context, r d.Recipe, sourceURL string) (bool, error)
 }
 
 type Reader interface {
@@ -87,15 +87,15 @@ func CreateHandler(writer Writer) http.HandlerFunc {
 			return
 		}
 
-		_, err := writer.CreateRecipe(r.Context(), req)
+		isNew, err := writer.Save(r.Context(), req.ToDomain(), "")
 		if err != nil {
-			if errors.Is(err, d.ErrAlreadyExists) {
-				http.Error(w, "recipe already exists", http.StatusConflict)
-				return
-			}
-
 			slog.Error("create recipe", "name", req.Name, "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if !isNew {
+			http.Error(w, "recipe already exists", http.StatusConflict)
 			return
 		}
 

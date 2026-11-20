@@ -16,12 +16,11 @@ import (
 	"time"
 
 	"github.com/michaelginalick/recipe-app/internal/handler"
+	"github.com/michaelginalick/recipe-app/internal/links"
 	"github.com/michaelginalick/recipe-app/internal/middleware"
 	srv "github.com/michaelginalick/recipe-app/internal/service"
 	"github.com/michaelginalick/recipe-app/internal/sqlstore"
 	"github.com/michaelginalick/recipe-app/migrations"
-	"github.com/michaelginalick/recipe-app/internal/links"
-	pkgstore "github.com/michaelginalick/recipe-app/internal/store"
 	_ "modernc.org/sqlite"
 )
 
@@ -63,7 +62,7 @@ func main() {
 		log.Fatal("recover jobs: ", err)
 	}
 
-	jobSvc := srv.NewJobService(jobStore, pkgstore.NewFromDB(writeDB), maxJobs)
+	jobSvc := srv.NewJobService(jobStore, sqlstore.NewSQLWriter(writeDB), maxJobs)
 	jobSvc.Start(context.Background())
 
 	static, err := fs.Sub(staticFiles, assetsDirectory)

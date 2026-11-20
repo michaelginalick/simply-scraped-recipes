@@ -2,14 +2,17 @@ package main
 
 import (
 	"cmp"
+	"database/sql"
 	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 
-	"github.com/michaelginalick/recipe-app/migrations"
 	app "github.com/michaelginalick/recipe-app/internal/application"
-	"github.com/michaelginalick/recipe-app/internal/store"
+	"github.com/michaelginalick/recipe-app/internal/sqlstore"
+	"github.com/michaelginalick/recipe-app/migrations"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -27,18 +30,23 @@ func main() {
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})))
-	s, err := store.New(*dbPath, migrations.SCHEMA)
+
+	db, err := openDB(*dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open database: %v\n", err)
 		os.Exit(1)
 	}
-	defer s.Close()
+	defer db.Close()
+
+	if err := migrations.Run(db); err != nil {
+		log.Fatal("migrations: ", err)
+	}
 
 	a, err := app.New(
 		app.WithSourceLink(*source),
 		app.WithThreadCount(*threadCount),
 		app.WithRootHost(*rootHost),
-		app.WithStore(s),
+		app.WithStore(sqlstore.NewSQLWriter(db)),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "an error occurred: %v\n", err)
@@ -46,4 +54,20 @@ func main() {
 	}
 
 	a.Run()
+}
+
+func openDB(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+
+	db.SetMaxOpenConns(1)
+
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+
+	return db, nil
 }
