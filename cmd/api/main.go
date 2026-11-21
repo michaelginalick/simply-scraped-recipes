@@ -18,7 +18,7 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/handler"
 	"github.com/michaelginalick/recipe-app/internal/links"
 	"github.com/michaelginalick/recipe-app/internal/middleware"
-	srv "github.com/michaelginalick/recipe-app/internal/service"
+	"github.com/michaelginalick/recipe-app/internal/service"
 	"github.com/michaelginalick/recipe-app/internal/sqlstore"
 	"github.com/michaelginalick/recipe-app/migrations"
 	_ "modernc.org/sqlite"
@@ -62,7 +62,7 @@ func main() {
 		log.Fatal("recover jobs: ", err)
 	}
 
-	jobSvc := srv.NewJobService(jobStore, sqlstore.NewSQLWriter(writeDB), maxJobs)
+	jobSvc := service.NewJobService(jobStore, sqlstore.NewSQLWriter(writeDB), maxJobs)
 	jobSvc.Start(context.Background())
 
 	static, err := fs.Sub(staticFiles, assetsDirectory)
@@ -89,10 +89,10 @@ func main() {
 	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
 	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))
 
-	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(srv.NewProbeService(links.NewLinkClient(&http.Transport{
+	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(links.NewLinkClient(&http.Transport{
 		DialContext:           (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
 		ResponseHeaderTimeout: 2 * time.Second,
-	})))))
+	}))))
 
 	server := &http.Server{
 		Addr:              ":8080",

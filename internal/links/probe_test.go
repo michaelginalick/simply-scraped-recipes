@@ -75,9 +75,9 @@ func TestProbe(t *testing.T) {
 			client: newClientServing(t, `<html><body><p>No recipe here.</p></body></html>`, http.StatusOK),
 		},
 		{
-			name:    "429 returns ErrTooManyRequests",
+			name:    "429 returns domain.ErrTooManyRequests",
 			client:  newClientServing(t, "", http.StatusTooManyRequests),
-			wantErr: ErrTooManyRequests,
+			wantErr: domain.ErrTooManyRequests,
 		},
 		{
 			name:    "non-200 status returns error",
@@ -85,9 +85,9 @@ func TestProbe(t *testing.T) {
 			wantErr: errAny,
 		},
 		{
-			name:    "timeout returns ErrProbeTimeout",
+			name:    "timeout returns domain.ErrProbeTimeout",
 			client:  newTimeoutClient(),
-			wantErr: ErrProbeTimeout,
+			wantErr: domain.ErrProbeTimeout,
 		},
 	}
 

@@ -2,7 +2,6 @@ package links
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,10 +18,6 @@ type LinkClient struct {
 	*http.Client
 }
 
-var (
-	ErrTooManyRequests = errors.New("too many requests 429")
-)
-
 // NewLinkClient returns a LinkClient using the given transport.
 // If transport is nil, http.DefaultTransport is used.
 func NewLinkClient(transport http.RoundTripper) *LinkClient {
@@ -36,7 +31,7 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 	doc, err, statusCode := fetchHTMLFromLink(link.Client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
-		return nil, domain.Recipe{}, ErrTooManyRequests
+		return nil, domain.Recipe{}, domain.ErrTooManyRequests
 	}
 
 	if err != nil || doc == nil {

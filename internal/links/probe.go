@@ -10,16 +10,14 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
-var ErrProbeTimeout = errors.New("probe timed out")
-
 func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, error) {
 	doc, err, statusCode := fetchHTMLFromLink(lc.Client, rawURL)
 	if statusCode == http.StatusTooManyRequests {
-		return domain.Recipe{}, ErrTooManyRequests
+		return domain.Recipe{}, domain.ErrTooManyRequests
 	}
 	if err != nil {
 		if isTimeout(err) {
-			return domain.Recipe{}, ErrProbeTimeout
+			return domain.Recipe{}, domain.ErrProbeTimeout
 		}
 		return domain.Recipe{}, err
 	}
