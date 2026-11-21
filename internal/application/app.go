@@ -181,7 +181,7 @@ func (app *Application) Run() {
 func (app *Application) crawl(u *url.URL) ([]*url.URL, domain.Recipe, error) {
 	urls, r, err := app.linkClient.ExtractRecipeLinks(u.String(), app.rootHost)
 	if err != nil {
-		if errors.Is(err, links.ErrTooManyRequests) {
+		if errors.Is(err, domain.ErrTooManyRequests) {
 			return nil, r, err
 		}
 		slog.Error("error parsing link", "error", err)
