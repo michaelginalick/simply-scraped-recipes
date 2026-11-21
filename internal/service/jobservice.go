@@ -20,7 +20,6 @@ type jobStore interface {
 	PromoteAndGetJob(ctx context.Context, maxJobs int) (*domain.Job, error)
 	CompleteJob(ctx context.Context, id, errMsg string) error
 	RecoverJobs(ctx context.Context) error
-	GetJob(ctx context.Context, id string) (domain.Job, error)
 }
 
 type jobService struct {
@@ -57,10 +56,6 @@ func (js *jobService) Submit(ctx context.Context, rawURL string) (string, error)
 	default:
 	}
 	return id, nil
-}
-
-func (js *jobService) GetJob(ctx context.Context, id string) (domain.Job, error) {
-	return js.store.GetJob(ctx, id)
 }
 
 // Stop waits for the ticker goroutine to exit via ctx cancellation,

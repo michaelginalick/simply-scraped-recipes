@@ -221,13 +221,14 @@ func TestSQLJobStore_InsertJob_Duplicate(t *testing.T) {
 	}
 }
 
-func TestSQLJobStore_GetJob(t *testing.T) {
+func TestSQLReader_GetJob(t *testing.T) {
 	db := newTestDB(t)
 	js := NewSQLJobStore(db)
+	reader := NewSQLReader(db)
 
 	id := seedJob(t, js, "https://example.com/recipe", "example.com")
 
-	got, err := js.GetJob(context.Background(), id)
+	got, err := reader.GetJob(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetJob: %v", err)
 	}
@@ -235,19 +236,21 @@ func TestSQLJobStore_GetJob(t *testing.T) {
 	if got.ID != id {
 		t.Errorf("got id %q, want %q", got.ID, id)
 	}
+
 	if got.URL != "https://example.com/recipe" {
 		t.Errorf("got url %q, want %q", got.URL, "https://example.com/recipe")
 	}
+
 	if got.Status != domain.JobStatusPending {
 		t.Errorf("got status %v, want %v", got.Status, domain.JobStatusPending)
 	}
 }
 
-func TestSQLJobStore_GetJob_NotFound(t *testing.T) {
+func TestSQLReader_GetJob_NotFound(t *testing.T) {
 	db := newTestDB(t)
-	js := NewSQLJobStore(db)
+	reader := NewSQLReader(db)
 
-	_, err := js.GetJob(context.Background(), "999")
+	_, err := reader.GetJob(context.Background(), "999")
 	if !errors.Is(err, domain.ErrJobNotFound) {
 		t.Errorf("got %v, want ErrJobNotFound", err)
 	}
@@ -283,7 +286,7 @@ func TestSQLJobStore_PromoteAndGetJob_Promotes(t *testing.T) {
 		t.Errorf("got id %q, want %q", job.ID, inserted)
 	}
 
-	got, err := js.GetJob(context.Background(), inserted)
+	got, err := NewSQLReader(db).GetJob(context.Background(), inserted)
 	if err != nil {
 		t.Fatalf("GetJob: %v", err)
 	}
@@ -324,7 +327,7 @@ func TestSQLJobStore_CompleteJob_Done(t *testing.T) {
 		t.Fatalf("CompleteJob: %v", err)
 	}
 
-	got, err := js.GetJob(context.Background(), id)
+	got, err := NewSQLReader(db).GetJob(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetJob: %v", err)
 	}
@@ -349,7 +352,7 @@ func TestSQLJobStore_CompleteJob_Error(t *testing.T) {
 		t.Fatalf("CompleteJob: %v", err)
 	}
 
-	got, err := js.GetJob(context.Background(), id)
+	got, err := NewSQLReader(db).GetJob(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetJob: %v", err)
 	}
@@ -381,7 +384,7 @@ func TestSQLJobStore_RecoverJobs(t *testing.T) {
 	}
 
 	for _, id := range []string{id1, id2} {
-		got, err := js.GetJob(context.Background(), id)
+		got, err := NewSQLReader(db).GetJob(context.Background(), id)
 		if err != nil {
 			t.Fatalf("GetJob(%q): %v", id, err)
 		}
