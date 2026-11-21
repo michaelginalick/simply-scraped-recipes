@@ -222,6 +222,7 @@ func TestSQLJobStore_InsertJob_Duplicate(t *testing.T) {
 }
 
 func TestSQLReader_GetJob(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	js := NewSQLJobStore(db)
 	reader := NewSQLReader(db)
@@ -247,6 +248,7 @@ func TestSQLReader_GetJob(t *testing.T) {
 }
 
 func TestSQLReader_GetJob_NotFound(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	reader := NewSQLReader(db)
 
