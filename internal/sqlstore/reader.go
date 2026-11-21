@@ -23,15 +23,17 @@ type dbRecipe struct {
 	instructions []string
 }
 
-type sqlReader struct {
+// SQLReader reads recipes and jobs from a SQLite database.
+type SQLReader struct {
 	db *sql.DB
 }
 
-func NewSQLReader(db *sql.DB) *sqlReader {
-	return &sqlReader{db: db}
+// NewSQLReader returns a SQLReader backed by the given database connection.
+func NewSQLReader(db *sql.DB) *SQLReader {
+	return &SQLReader{db: db}
 }
 
-func (r sqlReader) GetRecipe(ctx context.Context, id string) (domain.Recipe, error) {
+func (r SQLReader) GetRecipe(ctx context.Context, id string) (domain.Recipe, error) {
 	var name string
 	var ings, insts sql.NullString
 
@@ -56,7 +58,7 @@ func (r sqlReader) GetRecipe(ctx context.Context, id string) (domain.Recipe, err
 	return row.toDomain(), nil
 }
 
-func (r sqlReader) SearchRecipe(ctx context.Context, queryString string) ([]domain.Recipe, error) {
+func (r SQLReader) SearchRecipe(ctx context.Context, queryString string) ([]domain.Recipe, error) {
 	rows, err := r.db.QueryContext(ctx, searchRecipeQuery, sql.Named("query", strings.ToLower(queryString)))
 	if err != nil {
 		return nil, fmt.Errorf("search recipes: %w", err)
@@ -94,7 +96,8 @@ func (r sqlReader) SearchRecipe(ctx context.Context, queryString string) ([]doma
 	return result, nil
 }
 
-func (r sqlReader) GetJob(ctx context.Context, id string) (domain.Job, error) {
+// GetJob returns the job with the given ID, or domain.ErrJobNotFound if no such job exists.
+func (r SQLReader) GetJob(ctx context.Context, id string) (domain.Job, error) {
 	var job domain.Job
 	var idInt int64
 	var statusStr string
