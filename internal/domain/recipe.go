@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"errors"
 )
 
@@ -12,6 +13,10 @@ var (
 	ErrProbeTimeout     = errors.New("probe timed out")
 	ErrTooManyRequests  = errors.New("too many requests 429")
 )
+
+type RecipeStore interface {
+	Save(ctx context.Context, r Recipe, sourceURL string) (bool, error)
+}
 
 type Recipe struct {
 	ID           string

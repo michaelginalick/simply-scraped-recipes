@@ -24,13 +24,13 @@ type jobStore interface {
 
 type jobService struct {
 	store       jobStore
-	recipeStore app.RecipeStore
+	recipeStore domain.RecipeStore
 	dispatchCh  chan struct{}
 	maxJobs     int
 	wg          sync.WaitGroup
 }
 
-func NewJobService(store jobStore, recipeStore app.RecipeStore, maxJobs int) *jobService {
+func NewJobService(store jobStore, recipeStore domain.RecipeStore, maxJobs int) *jobService {
 	return &jobService{
 		store:       store,
 		recipeStore: recipeStore,

@@ -40,11 +40,11 @@ func main() {
 	defer stop()
 
 	dbReadPath := cmp.Or(os.Getenv("DB_PATH"), dbPath)
-	readOnlyDBPath := fmt.Sprintf("file:%s?mode=ro", dbReadPath)
+	readOnlyDBPath := fmt.Sprintf("file:%s?mode=ro&_busy_timeout=5000", dbReadPath)
 
 	// Write connection must be opened first so the DB file exists before
 	// the read-only connection attempts to open it.
-	writeDB := openDB(dbReadPath, maxWriteConnections)
+	writeDB := openDB((fmt.Sprintf("file:%s?_busy_timeout=5000", dbReadPath)), maxWriteConnections)
 	defer writeDB.Close()
 
 	if err := migrations.Run(writeDB); err != nil {

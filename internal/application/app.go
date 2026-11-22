@@ -13,15 +13,6 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/links"
 )
 
-type linkFetcher interface {
-	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, domain.Recipe, error)
-}
-
-// RecipeStore persists recipes; a duplicate name is a no-op.
-type RecipeStore interface {
-	Save(ctx context.Context, r domain.Recipe, sourceURL string) (bool, error)
-}
-
 const (
 	DefaultThreadCount int = 3
 	MaxThreads         int = 10
@@ -33,10 +24,10 @@ type Application struct {
 	worklist    chan []*url.URL
 	unseenLinks chan *url.URL
 	seenLinks   map[string]bool
-	store       RecipeStore
+	store       domain.RecipeStore
 	threadCount int
 	rootHost    string
-	linkClient  linkFetcher
+	linkClient  links.LinkFetcher
 	sync.Mutex
 }
 
@@ -73,7 +64,7 @@ func WithRootHost(root string) Option {
 	}
 }
 
-func WithStore(s RecipeStore) Option {
+func WithStore(s domain.RecipeStore) Option {
 	return func(app *Application) error {
 		app.store = s
 		return nil
@@ -115,7 +106,10 @@ func (app *Application) startWorkers(ctx context.Context, cancel context.CancelF
 						slog.Error("Shutting down crawling due to errors", "error", err)
 						cancel()
 					}
-					app.saveRecipe(ctx, recipe, link.String())
+					err = app.saveRecipe(ctx, recipe, link.String())
+					if err != nil {
+						slog.Error("unable to save recipe", "error", err)
+					}
 
 					// Send without blocking the worker so it can keep reading
 					// from unseenLinks while processWorkList is busy.
@@ -201,20 +195,20 @@ func (app *Application) seenURLs(urlStr string) bool {
 	return false
 }
 
-func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) {
+func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) error {
 	if app.store == nil {
-		return
+		return errors.New("missing data storage")
 	}
 
 	if recipe.Name == "" {
 		slog.Debug("no recipe found", "url", sourceURL)
-		return
+		return errors.New("recipe must have name")
 	}
 
 	isNew, err := app.store.Save(ctx, recipe, sourceURL)
 	if err != nil {
 		slog.Error("error saving recipe", "error", err)
-		return
+		return err
 	}
 
 	if isNew {
@@ -222,4 +216,5 @@ func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, so
 	} else {
 		slog.Debug("duplicate recipe", "name", recipe.Name, "url", sourceURL)
 	}
+	return nil
 }
