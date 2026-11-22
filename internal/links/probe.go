@@ -7,22 +7,25 @@ import (
 	"net/http"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
-	"github.com/michaelginalick/recipe-app/internal/recipes"
 )
 
 func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, error) {
-	doc, err, statusCode := fetchHTMLFromLink(lc.Client, rawURL)
+	body, err, statusCode := fetchBody(lc.client, rawURL)
 	if statusCode == http.StatusTooManyRequests {
 		return domain.Recipe{}, domain.ErrTooManyRequests
 	}
+
 	if err != nil {
 		if isTimeout(err) {
 			return domain.Recipe{}, domain.ErrProbeTimeout
 		}
+
 		return domain.Recipe{}, err
 	}
 
-	return recipes.ParseRecipe(doc), nil
+	defer body.Close()
+
+	return lc.parser.Parse(body), nil
 }
 
 func isTimeout(err error) bool {

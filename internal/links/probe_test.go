@@ -18,7 +18,7 @@ func (mockTimeoutErr) Temporary() bool { return false }
 func newTimeoutClient() *LinkClient {
 	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return nil, mockTimeoutErr{}
-	}))
+	}), nil)
 }
 
 // errAny signals that any non-nil error satisfies the test case.

@@ -92,7 +92,7 @@ func main() {
 	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(links.NewLinkClient(&http.Transport{
 		DialContext:           (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
 		ResponseHeaderTimeout: 2 * time.Second,
-	}))))
+	}, nil))))
 
 	server := &http.Server{
 		Addr:              ":8080",

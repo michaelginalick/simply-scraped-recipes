@@ -1,19 +1,27 @@
 package recipes
 
 import (
+	"io"
 	"strings"
 
 	"github.com/michaelginalick/recipe-app/internal/domain"
 	"golang.org/x/net/html"
 )
 
-// ParseRecipe extracts the recipe name, ingredients, and instructions
-// from WP Recipe Maker plugin markup.
-func ParseRecipe(doc *html.Node) domain.Recipe {
+// WPRMParser implements RecipeParser using WP Recipe Maker HTML markup.
+type WPRMParser struct{}
+
+func (WPRMParser) Parse(r io.Reader) domain.Recipe {
+	doc, err := html.Parse(r)
+	if err != nil {
+		return domain.Recipe{}
+	}
+
 	return extractRecipe(doc)
 }
 
 func extractRecipe(doc *html.Node) domain.Recipe {
+
 	var recipe domain.Recipe
 
 	var walk func(*html.Node)
