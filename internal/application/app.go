@@ -14,7 +14,7 @@ import (
 )
 
 type linkFetcher interface {
-	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, domain.Recipe, error)
+	ExtractRecipeLinks(ctx context.Context, url, scopedHost string) ([]*url.URL, domain.Recipe, error)
 }
 
 // RecipeStore persists recipes; a duplicate name is a no-op.
@@ -115,7 +115,7 @@ func (app *Application) startWorkers(ctx context.Context, cancel context.CancelF
 						return
 					}
 					slog.Debug("crawling url", "url", link.String())
-					foundLinks, recipe, err := app.crawl(link)
+					foundLinks, recipe, err := app.crawl(ctx, link)
 					if err != nil {
 						slog.Error("Shutting down crawling due to errors", "error", err)
 						cancel()
@@ -186,8 +186,8 @@ func (app *Application) Run() {
 	slog.Info("crawler finished", "url", app.source.String())
 }
 
-func (app *Application) crawl(u *url.URL) ([]*url.URL, domain.Recipe, error) {
-	urls, r, err := app.linkClient.ExtractRecipeLinks(u.String(), app.rootHost)
+func (app *Application) crawl(ctx context.Context, u *url.URL) ([]*url.URL, domain.Recipe, error) {
+	urls, r, err := app.linkClient.ExtractRecipeLinks(ctx, u.String(), app.rootHost)
 	if err != nil {
 		if errors.Is(err, domain.ErrTooManyRequests) {
 			return nil, r, err

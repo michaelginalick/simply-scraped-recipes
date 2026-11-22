@@ -43,8 +43,8 @@ func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient
 	}
 }
 
-func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
-	body, statusCode, err := fetchBody(link.client, givenURL)
+func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
+	body, statusCode, err := fetchBody(ctx, link.client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
 		return nil, domain.Recipe{}, domain.ErrTooManyRequests
@@ -105,8 +105,8 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 	return urls, recipe, nil
 }
 
-func fetchBody(client *http.Client, rawURL string) (io.ReadCloser, int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func fetchBody(ctx context.Context, client *http.Client, rawURL string) (io.ReadCloser, int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)

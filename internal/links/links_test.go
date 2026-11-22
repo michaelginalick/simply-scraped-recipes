@@ -1,6 +1,7 @@
 package links
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -73,7 +74,7 @@ func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
 	defer srv.Close()
 
 	client := NewLinkClient(nil, nil)
-	_, recipe, err := client.ExtractRecipeLinks(srv.URL, srv.Listener.Addr().String())
+	_, recipe, err := client.ExtractRecipeLinks(context.Background(), srv.URL, srv.Listener.Addr().String())
 	if err != nil {
 		t.Fatalf("ExtractRecipeLinks: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestExtractRecipeLinks_FiltersLinks(t *testing.T) {
 	t.Parallel()
 	client := newClientServing(t, recipePage, http.StatusOK)
 
-	urls, _, err := client.ExtractRecipeLinks("https://example.com/page/", "example.com")
+	urls, _, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/page/", "example.com")
 	if err != nil {
 		t.Fatalf("ExtractRecipeLinks: %v", err)
 	}
@@ -127,7 +128,7 @@ func TestExtractRecipeLinks_NonOKStatus(t *testing.T) {
 	t.Parallel()
 	client := newClientServing(t, "", http.StatusForbidden)
 
-	_, _, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
+	_, _, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
 	if err == nil {
 		t.Error("expected error for non-200 status, got nil")
 	}
@@ -137,7 +138,7 @@ func TestExtractRecipeLinks_EmptyPage(t *testing.T) {
 	t.Parallel()
 	client := newClientServing(t, `<html><body><p>Nothing here.</p></body></html>`, http.StatusOK)
 
-	urls, recipe, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
+	urls, recipe, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
 	if err != nil {
 		t.Fatalf("ExtractRecipeLinks: %v", err)
 	}
@@ -164,7 +165,7 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 		}, nil
 	}), nil)
 
-	client.ExtractRecipeLinks("https://example.com/", "example.com")
+	client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
 
 	if gotUA == "" {
 		t.Error("expected User-Agent header to be set, got empty string")
@@ -191,7 +192,7 @@ func TestExtractRecipeLinks_UsesFakeParser(t *testing.T) {
 		fakeParser{recipe: want},
 	)
 
-	_, got, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
+	_, got, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
