@@ -15,13 +15,8 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/dto"
 )
 
-type Writer interface {
+type RecipeWriter interface {
 	Save(ctx context.Context, r d.Recipe, sourceURL string) (bool, error)
-}
-
-type Reader interface {
-	RecipeReader
-	JobReader
 }
 
 type RecipeReader interface {
@@ -45,7 +40,7 @@ func sanitizeQuery(q string) string {
 	return strings.TrimSpace(ftsSpecial.ReplaceAllString(q, " "))
 }
 
-func GetHandler(reader Reader) http.HandlerFunc {
+func GetHandler(reader RecipeReader) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -72,7 +67,7 @@ func GetHandler(reader Reader) http.HandlerFunc {
 	})
 }
 
-func CreateHandler(writer Writer) http.HandlerFunc {
+func CreateHandler(writer RecipeWriter) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreateRecipeRequest
 
@@ -137,7 +132,7 @@ func SubmitJobHandler(svc JobService) http.HandlerFunc {
 	})
 }
 
-func GetJobHandler(reader Reader) http.HandlerFunc {
+func GetJobHandler(reader JobReader) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -158,7 +153,7 @@ func GetJobHandler(reader Reader) http.HandlerFunc {
 	})
 }
 
-func SearchHandler(reader Reader) http.HandlerFunc {
+func SearchHandler(reader RecipeReader) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := sanitizeQuery(r.URL.Query().Get("q"))
 
