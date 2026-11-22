@@ -13,10 +13,24 @@ import (
 	"github.com/michaelginalick/recipe-app/internal/links"
 )
 
+type linkFetcher interface {
+	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, domain.Recipe, error)
+}
+
+// RecipeStore persists recipes; a duplicate name is a no-op.
+type RecipeStore interface {
+	Save(ctx context.Context, r domain.Recipe, sourceURL string) (bool, error)
+}
+
 const (
 	DefaultThreadCount int = 3
 	MaxThreads         int = 10
 	MinThreads         int = 1
+)
+
+var (
+	ErrDataStoreEmpty    = errors.New("missing data storage")
+	ErrRecipeNameMissing = errors.New("recipe missing name")
 )
 
 type Application struct {
@@ -24,10 +38,10 @@ type Application struct {
 	worklist    chan []*url.URL
 	unseenLinks chan *url.URL
 	seenLinks   map[string]bool
-	store       domain.RecipeStore
+	store       RecipeStore
 	threadCount int
 	rootHost    string
-	linkClient  links.LinkFetcher
+	linkClient  linkFetcher
 	sync.Mutex
 }
 
@@ -64,7 +78,7 @@ func WithRootHost(root string) Option {
 	}
 }
 
-func WithStore(s domain.RecipeStore) Option {
+func WithStore(s RecipeStore) Option {
 	return func(app *Application) error {
 		app.store = s
 		return nil
@@ -197,12 +211,12 @@ func (app *Application) seenURLs(urlStr string) bool {
 
 func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) error {
 	if app.store == nil {
-		return errors.New("missing data storage")
+		return ErrDataStoreEmpty
 	}
 
 	if recipe.Name == "" {
 		slog.Debug("no recipe found", "url", sourceURL)
-		return errors.New("recipe must have name")
+		return ErrRecipeNameMissing
 	}
 
 	isNew, err := app.store.Save(ctx, recipe, sourceURL)

@@ -22,15 +22,20 @@ type jobStore interface {
 	RecoverJobs(ctx context.Context) error
 }
 
+// RecipeStore persists recipes; a duplicate name is a no-op.
+type RecipeStore interface {
+	Save(ctx context.Context, r domain.Recipe, sourceURL string) (bool, error)
+}
+
 type jobService struct {
 	store       jobStore
-	recipeStore domain.RecipeStore
+	recipeStore RecipeStore
 	dispatchCh  chan struct{}
 	maxJobs     int
 	wg          sync.WaitGroup
 }
 
-func NewJobService(store jobStore, recipeStore domain.RecipeStore, maxJobs int) *jobService {
+func NewJobService(store jobStore, recipeStore RecipeStore, maxJobs int) *jobService {
 	return &jobService{
 		store:       store,
 		recipeStore: recipeStore,

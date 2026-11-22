@@ -21,10 +21,6 @@ type RecipeParser interface {
 	Parse(io.Reader) domain.Recipe
 }
 
-type LinkFetcher interface {
-	ExtractRecipeLinks(url, scopedHost string) ([]*url.URL, domain.Recipe, error)
-}
-
 type LinkClient struct {
 	client *http.Client
 	parser RecipeParser
