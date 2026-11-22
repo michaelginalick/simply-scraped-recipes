@@ -28,6 +28,11 @@ const (
 	MinThreads         int = 1
 )
 
+var (
+	ErrDataStoreEmpty    = errors.New("missing data storage")
+	ErrRecipeNameMissing = errors.New("recipe missing name")
+)
+
 type Application struct {
 	source      *url.URL
 	worklist    chan []*url.URL
@@ -115,7 +120,10 @@ func (app *Application) startWorkers(ctx context.Context, cancel context.CancelF
 						slog.Error("Shutting down crawling due to errors", "error", err)
 						cancel()
 					}
-					app.saveRecipe(ctx, recipe, link.String())
+					err = app.saveRecipe(ctx, recipe, link.String())
+					if err != nil {
+						slog.Error("unable to save recipe", "error", err)
+					}
 
 					// Send without blocking the worker so it can keep reading
 					// from unseenLinks while processWorkList is busy.
@@ -201,20 +209,20 @@ func (app *Application) seenURLs(urlStr string) bool {
 	return false
 }
 
-func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) {
+func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, sourceURL string) error {
 	if app.store == nil {
-		return
+		return ErrDataStoreEmpty
 	}
 
 	if recipe.Name == "" {
 		slog.Debug("no recipe found", "url", sourceURL)
-		return
+		return ErrRecipeNameMissing
 	}
 
 	isNew, err := app.store.Save(ctx, recipe, sourceURL)
 	if err != nil {
 		slog.Error("error saving recipe", "error", err)
-		return
+		return err
 	}
 
 	if isNew {
@@ -222,4 +230,5 @@ func (app *Application) saveRecipe(ctx context.Context, recipe domain.Recipe, so
 	} else {
 		slog.Debug("duplicate recipe", "name", recipe.Name, "url", sourceURL)
 	}
+	return nil
 }
