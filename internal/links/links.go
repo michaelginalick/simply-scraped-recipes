@@ -44,7 +44,7 @@ func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient
 }
 
 func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
-	body, err, statusCode := fetchBody(link.client, givenURL)
+	body, statusCode, err := fetchBody(link.client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
 		return nil, domain.Recipe{}, domain.ErrTooManyRequests
@@ -105,28 +105,28 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 	return urls, recipe, nil
 }
 
-func fetchBody(client *http.Client, rawURL string) (io.ReadCloser, error, int) {
+func fetchBody(client *http.Client, rawURL string) (io.ReadCloser, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; recipe-scraper/1.0)")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode), resp.StatusCode
+		return nil, resp.StatusCode, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	return resp.Body, nil, resp.StatusCode
+	return resp.Body, resp.StatusCode, nil
 }
 
 // forEachNode recursively visits HTML nodes using the pre/post functions.

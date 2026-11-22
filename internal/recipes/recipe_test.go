@@ -6,6 +6,7 @@ import (
 )
 
 func TestWPRMParser_Name(t *testing.T) {
+	t.Parallel()
 	p := WPRMParser{}
 	r := p.Parse(strings.NewReader(`<html><body>
 		<span class="wprm-recipe-name">Avocado Toast</span>
@@ -17,6 +18,7 @@ func TestWPRMParser_Name(t *testing.T) {
 }
 
 func TestWPRMParser_Ingredients(t *testing.T) {
+	t.Parallel()
 	p := WPRMParser{}
 	r := p.Parse(strings.NewReader(`<html><body>
 		<li class="wprm-recipe-ingredient">
@@ -44,6 +46,7 @@ func TestWPRMParser_Ingredients(t *testing.T) {
 }
 
 func TestWPRMParser_SkipsSystem2(t *testing.T) {
+	t.Parallel()
 	p := WPRMParser{}
 	r := p.Parse(strings.NewReader(`<html><body>
 		<li class="wprm-recipe-ingredient">
@@ -69,6 +72,7 @@ func TestWPRMParser_SkipsSystem2(t *testing.T) {
 }
 
 func TestWPRMParser_Instructions(t *testing.T) {
+	t.Parallel()
 	p := WPRMParser{}
 	r := p.Parse(strings.NewReader(`<html><body>
 		<div class="wprm-recipe-instruction-text">Preheat oven to 350F.</div>
@@ -85,6 +89,7 @@ func TestWPRMParser_Instructions(t *testing.T) {
 }
 
 func TestWPRMParser_Empty(t *testing.T) {
+	t.Parallel()
 	p := WPRMParser{}
 	r := p.Parse(strings.NewReader(`<html><body><p>No recipe here.</p></body></html>`))
 

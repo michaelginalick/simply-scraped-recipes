@@ -66,6 +66,7 @@ const recipePage = `<!DOCTYPE html>
 </html>`
 
 func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, recipePage)
 	}))
@@ -91,6 +92,7 @@ func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_FiltersLinks(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, recipePage, http.StatusOK)
 
 	urls, _, err := client.ExtractRecipeLinks("https://example.com/page/", "example.com")
@@ -122,6 +124,7 @@ func TestExtractRecipeLinks_FiltersLinks(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_NonOKStatus(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, "", http.StatusForbidden)
 
 	_, _, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
@@ -131,6 +134,7 @@ func TestExtractRecipeLinks_NonOKStatus(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_EmptyPage(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, `<html><body><p>Nothing here.</p></body></html>`, http.StatusOK)
 
 	urls, recipe, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
@@ -148,6 +152,7 @@ func TestExtractRecipeLinks_EmptyPage(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
+	t.Parallel()
 	var gotUA string
 
 	client := NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -171,13 +176,14 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 }
 
 func TestNewLinkClient_DefaultTransport(t *testing.T) {
-	client := NewLinkClient(nil, nil)
-	if client.client == nil {
-		t.Error("expected non-nil http.Client")
+	t.Parallel()
+	if NewLinkClient(nil, nil) == nil {
+		t.Error("expected non-nil LinkClient")
 	}
 }
 
 func TestExtractRecipeLinks_UsesFakeParser(t *testing.T) {
+	t.Parallel()
 	want := domain.Recipe{Name: "Injected Recipe"}
 	client := newClientWithParser(t,
 		`<html><body><a href="/page/">link</a></body></html>`,

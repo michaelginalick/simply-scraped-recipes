@@ -1,8 +1,11 @@
 package links
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 
@@ -10,7 +13,7 @@ import (
 )
 
 func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, error) {
-	body, err, statusCode := fetchBody(lc.client, rawURL)
+	body, statusCode, err := fetchBody(lc.client, rawURL)
 	if statusCode == http.StatusTooManyRequests {
 		return domain.Recipe{}, domain.ErrTooManyRequests
 	}
@@ -25,7 +28,12 @@ func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, 
 
 	defer body.Close()
 
-	return lc.parser.Parse(body), nil
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		return domain.Recipe{}, fmt.Errorf("reading body: %w", err)
+	}
+
+	return lc.parser.Parse(bytes.NewReader(bodyBytes)), nil
 }
 
 func isTimeout(err error) bool {
