@@ -1,8 +1,10 @@
 package links
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -14,33 +16,59 @@ import (
 	"golang.org/x/net/html"
 )
 
-type LinkClient struct {
-	*http.Client
+// RecipeParser extracts a Recipe from an HTML page body.
+type RecipeParser interface {
+	Parse(io.Reader) domain.Recipe
 }
 
-// NewLinkClient returns a LinkClient using the given transport.
-// If transport is nil, http.DefaultTransport is used.
-func NewLinkClient(transport http.RoundTripper) *LinkClient {
+type LinkClient struct {
+	client *http.Client
+	parser RecipeParser
+}
+
+// NewLinkClient returns a LinkClient using the given transport and parser.
+// A nil transport falls back to http.DefaultTransport; a nil parser uses WPRMParser.
+func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient {
 	if transport == nil {
 		transport = http.DefaultTransport
 	}
-	return &LinkClient{&http.Client{Transport: transport}}
+
+	if parser == nil {
+		parser = r.WPRMParser{}
+	}
+
+	return &LinkClient{
+		client: &http.Client{Transport: transport},
+		parser: parser,
+	}
 }
 
 func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
-	doc, err, statusCode := fetchHTMLFromLink(link.Client, givenURL)
+	body, statusCode, err := fetchBody(link.client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
 		return nil, domain.Recipe{}, domain.ErrTooManyRequests
 	}
 
-	if err != nil || doc == nil {
+	if err != nil || body == nil {
 		return nil, domain.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
+	}
+
+	defer body.Close()
+
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		return nil, domain.Recipe{}, fmt.Errorf("reading body: %w", err)
 	}
 
 	baseURL, err := url.Parse(givenURL)
 	if err != nil {
 		return nil, domain.Recipe{}, fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	doc, err := html.Parse(bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, domain.Recipe{}, fmt.Errorf("parsing HTML: %w", err)
 	}
 
 	var urls []*url.URL
@@ -71,33 +99,34 @@ func (link *LinkClient) ExtractRecipeLinks(givenURL, scopedHost string) ([]*url.
 	}
 
 	forEachNode(doc, visitNode, nil)
-	return urls, r.ParseRecipe(doc), nil
+
+	recipe := link.parser.Parse(bytes.NewReader(bodyBytes))
+
+	return urls, recipe, nil
 }
 
-func fetchHTMLFromLink(client *http.Client, rawURL string) (*html.Node, error, int) {
+func fetchBody(client *http.Client, rawURL string) (io.ReadCloser, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; recipe-scraper/1.0)")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode), resp.StatusCode
+		resp.Body.Close()
+		return nil, resp.StatusCode, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	h, err := html.Parse(resp.Body)
-	
-	return h, err, resp.StatusCode
+	return resp.Body, resp.StatusCode, nil
 }
 
 // forEachNode recursively visits HTML nodes using the pre/post functions.

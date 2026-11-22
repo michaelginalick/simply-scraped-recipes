@@ -18,7 +18,7 @@ func (mockTimeoutErr) Temporary() bool { return false }
 func newTimeoutClient() *LinkClient {
 	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return nil, mockTimeoutErr{}
-	}))
+	}), nil)
 }
 
 // errAny signals that any non-nil error satisfies the test case.
@@ -93,6 +93,7 @@ func TestProbe(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			recipe, err := tc.client.Probe(context.Background(), "https://example.com/recipe/")
 			assertProbeErr(t, err, tc.wantErr)
 			assertProbeRecipe(t, recipe, tc.wantRecipe)

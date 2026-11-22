@@ -3,33 +3,24 @@ package recipes
 import (
 	"strings"
 	"testing"
-
-	"golang.org/x/net/html"
 )
 
-func parse(t *testing.T, s string) *html.Node {
-	t.Helper()
-	doc, err := html.Parse(strings.NewReader(s))
-	if err != nil {
-		t.Fatalf("parse html: %v", err)
-	}
-	return doc
-}
-
-func TestParseRecipe_Name(t *testing.T) {
-	doc := parse(t, `<html><body>
+func TestWPRMParser_Name(t *testing.T) {
+	t.Parallel()
+	p := WPRMParser{}
+	r := p.Parse(strings.NewReader(`<html><body>
 		<span class="wprm-recipe-name">Avocado Toast</span>
-	</body></html>`)
-
-	r := ParseRecipe(doc)
+	</body></html>`))
 
 	if r.Name != "Avocado Toast" {
 		t.Errorf("got %q, want %q", r.Name, "Avocado Toast")
 	}
 }
 
-func TestParseRecipe_Ingredients(t *testing.T) {
-	doc := parse(t, `<html><body>
+func TestWPRMParser_Ingredients(t *testing.T) {
+	t.Parallel()
+	p := WPRMParser{}
+	r := p.Parse(strings.NewReader(`<html><body>
 		<li class="wprm-recipe-ingredient">
 			<span class="wprm-recipe-ingredient-amount">2</span>
 			<span class="wprm-recipe-ingredient-unit">cups</span>
@@ -39,9 +30,7 @@ func TestParseRecipe_Ingredients(t *testing.T) {
 			<span class="wprm-recipe-ingredient-amount">1</span>
 			<span class="wprm-recipe-ingredient-name">egg</span>
 		</li>
-	</body></html>`)
-
-	r := ParseRecipe(doc)
+	</body></html>`))
 
 	if len(r.Ingredients) != 2 {
 		t.Fatalf("got %d ingredients, want 2", len(r.Ingredients))
@@ -56,8 +45,10 @@ func TestParseRecipe_Ingredients(t *testing.T) {
 	}
 }
 
-func TestParseRecipe_SkipsSystem2(t *testing.T) {
-	doc := parse(t, `<html><body>
+func TestWPRMParser_SkipsSystem2(t *testing.T) {
+	t.Parallel()
+	p := WPRMParser{}
+	r := p.Parse(strings.NewReader(`<html><body>
 		<li class="wprm-recipe-ingredient">
 			<span class="wprm-recipe-ingredient-unit-system-1">
 				<span class="wprm-recipe-ingredient-amount">1</span>
@@ -69,9 +60,7 @@ func TestParseRecipe_SkipsSystem2(t *testing.T) {
 			</span>
 			<span class="wprm-recipe-ingredient-name">water</span>
 		</li>
-	</body></html>`)
-
-	r := ParseRecipe(doc)
+	</body></html>`))
 
 	if len(r.Ingredients) != 1 {
 		t.Fatalf("got %d ingredients, want 1", len(r.Ingredients))
@@ -82,13 +71,13 @@ func TestParseRecipe_SkipsSystem2(t *testing.T) {
 	}
 }
 
-func TestParseRecipe_Instructions(t *testing.T) {
-	doc := parse(t, `<html><body>
+func TestWPRMParser_Instructions(t *testing.T) {
+	t.Parallel()
+	p := WPRMParser{}
+	r := p.Parse(strings.NewReader(`<html><body>
 		<div class="wprm-recipe-instruction-text">Preheat oven to 350F.</div>
 		<div class="wprm-recipe-instruction-text">Mix dry ingredients.</div>
-	</body></html>`)
-
-	r := ParseRecipe(doc)
+	</body></html>`))
 
 	if len(r.Instructions) != 2 {
 		t.Fatalf("got %d instructions, want 2", len(r.Instructions))
@@ -99,10 +88,10 @@ func TestParseRecipe_Instructions(t *testing.T) {
 	}
 }
 
-func TestParseRecipe_Empty(t *testing.T) {
-	doc := parse(t, `<html><body><p>No recipe here.</p></body></html>`)
-
-	r := ParseRecipe(doc)
+func TestWPRMParser_Empty(t *testing.T) {
+	t.Parallel()
+	p := WPRMParser{}
+	r := p.Parse(strings.NewReader(`<html><body><p>No recipe here.</p></body></html>`))
 
 	if r.Name != "" || len(r.Ingredients) != 0 || len(r.Instructions) != 0 {
 		t.Errorf("expected empty recipe, got %+v", r)

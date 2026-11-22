@@ -85,7 +85,7 @@ func New(opts ...Option) (*Application, error) {
 		worklist:    make(chan []*url.URL),
 		unseenLinks: make(chan *url.URL),
 		seenLinks:   make(map[string]bool),
-		linkClient:  links.NewLinkClient(nil),
+		linkClient:  links.NewLinkClient(nil, nil),
 		threadCount: DefaultThreadCount,
 	}
 

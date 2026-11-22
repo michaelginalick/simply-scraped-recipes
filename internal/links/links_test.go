@@ -6,7 +6,26 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/michaelginalick/recipe-app/internal/domain"
 )
+
+type fakeParser struct {
+	recipe domain.Recipe
+}
+
+func (f fakeParser) Parse(_ io.Reader) domain.Recipe { return f.recipe }
+
+func newClientWithParser(t *testing.T, body string, status int, p RecipeParser) *LinkClient {
+	t.Helper()
+	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: status,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	}), p)
+}
 
 // roundTripFunc lets a plain func satisfy http.RoundTripper.
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -23,7 +42,7 @@ func newClientServing(t *testing.T, body string, status int) *LinkClient {
 			Body:       io.NopCloser(strings.NewReader(body)),
 			Header:     make(http.Header),
 		}, nil
-	}))
+	}), nil)
 }
 
 const recipePage = `<!DOCTYPE html>
@@ -47,12 +66,13 @@ const recipePage = `<!DOCTYPE html>
 </html>`
 
 func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, recipePage)
 	}))
 	defer srv.Close()
 
-	client := NewLinkClient(nil)
+	client := NewLinkClient(nil, nil)
 	_, recipe, err := client.ExtractRecipeLinks(srv.URL, srv.Listener.Addr().String())
 	if err != nil {
 		t.Fatalf("ExtractRecipeLinks: %v", err)
@@ -72,6 +92,7 @@ func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_FiltersLinks(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, recipePage, http.StatusOK)
 
 	urls, _, err := client.ExtractRecipeLinks("https://example.com/page/", "example.com")
@@ -103,6 +124,7 @@ func TestExtractRecipeLinks_FiltersLinks(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_NonOKStatus(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, "", http.StatusForbidden)
 
 	_, _, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
@@ -112,6 +134,7 @@ func TestExtractRecipeLinks_NonOKStatus(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_EmptyPage(t *testing.T) {
+	t.Parallel()
 	client := newClientServing(t, `<html><body><p>Nothing here.</p></body></html>`, http.StatusOK)
 
 	urls, recipe, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
@@ -129,6 +152,7 @@ func TestExtractRecipeLinks_EmptyPage(t *testing.T) {
 }
 
 func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
+	t.Parallel()
 	var gotUA string
 
 	client := NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -138,7 +162,7 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(`<html><body></body></html>`)),
 			Header:     make(http.Header),
 		}, nil
-	}))
+	}), nil)
 
 	client.ExtractRecipeLinks("https://example.com/", "example.com")
 
@@ -152,8 +176,27 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 }
 
 func TestNewLinkClient_DefaultTransport(t *testing.T) {
-	client := NewLinkClient(nil)
-	if client.Client == nil {
-		t.Error("expected non-nil http.Client")
+	t.Parallel()
+	if NewLinkClient(nil, nil) == nil {
+		t.Error("expected non-nil LinkClient")
+	}
+}
+
+func TestExtractRecipeLinks_UsesFakeParser(t *testing.T) {
+	t.Parallel()
+	want := domain.Recipe{Name: "Injected Recipe"}
+	client := newClientWithParser(t,
+		`<html><body><a href="/page/">link</a></body></html>`,
+		http.StatusOK,
+		fakeParser{recipe: want},
+	)
+
+	_, got, err := client.ExtractRecipeLinks("https://example.com/", "example.com")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Name != want.Name {
+		t.Errorf("got recipe name %q, want %q", got.Name, want.Name)
 	}
 }
