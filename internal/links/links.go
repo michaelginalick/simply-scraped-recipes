@@ -44,14 +44,14 @@ func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient
 	}
 }
 
-func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
+func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL string) ([]*url.URL, domain.Recipe, error) {
 	body, statusCode, err := fetchBody(ctx, link.client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
 		return nil, domain.Recipe{}, domain.ErrTooManyRequests
 	}
 
-	if err != nil || body == nil || statusCode >= http.StatusAccepted {
+	if err != nil || body == nil {
 		return nil, domain.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
 	}
 
@@ -79,7 +79,7 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 				}
 
 				fullURL := baseURL.ResolveReference(u)
-				if fullURL.Host != "" && hostsMatch(fullURL.Host, scopedHost) &&
+				if fullURL.Host != "" && hostsMatch(fullURL.Host, baseURL.Host) &&
 					len(fullURL.RawQuery) == 0 &&
 					!strings.Contains(fullURL.Path, "/de/") &&
 					!strings.Contains(fullURL.Path, "comments") {
