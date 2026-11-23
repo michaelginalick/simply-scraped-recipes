@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -43,7 +44,7 @@ func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient
 	}
 }
 
-func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scopedHost string) ([]*url.URL, domain.Recipe, error) {
+func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL string) ([]*url.URL, domain.Recipe, error) {
 	body, statusCode, err := fetchBody(ctx, link.client, givenURL)
 
 	if statusCode == http.StatusTooManyRequests {
@@ -54,19 +55,11 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 		return nil, domain.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
 	}
 
-	defer body.Close()
-
-	bodyBytes, err := io.ReadAll(body)
-	if err != nil {
-		return nil, domain.Recipe{}, fmt.Errorf("reading body: %w", err)
-	}
-
 	baseURL, err := url.Parse(givenURL)
 	if err != nil {
 		return nil, domain.Recipe{}, fmt.Errorf("invalid base URL: %w", err)
 	}
-
-	doc, err := html.Parse(bytes.NewReader(bodyBytes))
+	doc, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
 		return nil, domain.Recipe{}, fmt.Errorf("parsing HTML: %w", err)
 	}
@@ -86,9 +79,7 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 				}
 
 				fullURL := baseURL.ResolveReference(u)
-
-				// ignore bad, non-root, and urls with a query param
-				if fullURL.Host != "" && fullURL.Host == scopedHost &&
+				if fullURL.Host != "" && hostsMatch(fullURL.Host, baseURL.Host) &&
 					len(fullURL.RawQuery) == 0 &&
 					!strings.Contains(fullURL.Path, "/de/") &&
 					!strings.Contains(fullURL.Path, "comments") {
@@ -99,13 +90,12 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 	}
 
 	forEachNode(doc, visitNode, nil)
-
-	recipe := link.parser.Parse(bytes.NewReader(bodyBytes))
+	recipe := link.parser.Parse(bytes.NewReader(body))
 
 	return urls, recipe, nil
 }
 
-func fetchBody(ctx context.Context, client *http.Client, rawURL string) (io.ReadCloser, int, error) {
+func fetchBody(ctx context.Context, client *http.Client, rawURL string) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -126,7 +116,27 @@ func fetchBody(ctx context.Context, client *http.Client, rawURL string) (io.Read
 		return nil, resp.StatusCode, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	return resp.Body, resp.StatusCode, nil
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Error("reading body", "error", err, "errorType", fmt.Sprintf("%T", err))
+		return nil, 0, fmt.Errorf("reading body: %w", err)
+	}
+
+	return bodyBytes, resp.StatusCode, nil
+}
+
+// hostsMatch returns true when a and b refer to the same host, ignoring ports
+// and the www. prefix so that www.example.com matches example.com.
+func hostsMatch(a, b string) bool {
+	normalize := func(h string) string {
+		if host, _, err := net.SplitHostPort(h); err == nil {
+			h = host
+		}
+		return strings.TrimPrefix(h, "www.")
+	}
+	return normalize(a) == normalize(b)
 }
 
 // forEachNode recursively visits HTML nodes using the pre/post functions.

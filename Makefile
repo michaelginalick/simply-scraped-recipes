@@ -1,9 +1,8 @@
 DB_PATH ?= ./recipes.db
-SOURCE  ?= https://www.liveeatlearn.com/vegetable-pot-pie-casserole/
+SOURCE  ?= https://myquietkitchen.com/silken-tofu-pasta-sauce/
 PORT    ?= 8080
-DEBUG   ?= false
+DEBUG   ?= true
 HOST    ?= 100.56.133.20
-ROOT	?= www.liveeatlearn.com
 
 .PHONY: run-api run-scraper build-ts docker-build docker-up docker-down docker-scraper deploy tf-init tf-plan tf-apply tf-destroy
 
@@ -11,7 +10,7 @@ run-api:
 	DB_PATH=$(DB_PATH) go run ./cmd/api
 
 run-scraper:
-	DB_PATH=$(DB_PATH) go run ./cmd/scraper -source=$(SOURCE) -debug=$(DEBUG) -rootHost=$(ROOT)
+	DB_PATH=$(DB_PATH) go run ./cmd/scraper -source=$(SOURCE) -debug=$(DEBUG)
 
 ## Deploy
 provision:

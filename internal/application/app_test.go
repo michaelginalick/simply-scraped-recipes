@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -38,12 +37,9 @@ func TestRun_Completes(t *testing.T) {
 	}))
 	defer server.Close()
 
-	u, _ := url.Parse(server.URL)
-
 	a, err := application.New(
 		application.WithSourceLink(server.URL+"/"),
 		application.WithThreadCount(1),
-		application.WithRootHost(u.Host),
 	)
 	if err != nil {
 		t.Fatalf("New: %v", err)

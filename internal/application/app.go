@@ -14,7 +14,7 @@ import (
 )
 
 type linkFetcher interface {
-	ExtractRecipeLinks(ctx context.Context, url, scopedHost string) ([]*url.URL, domain.Recipe, error)
+	ExtractRecipeLinks(ctx context.Context, url string) ([]*url.URL, domain.Recipe, error)
 }
 
 // RecipeStore persists recipes; a duplicate name is a no-op.
@@ -40,7 +40,6 @@ type Application struct {
 	seenLinks   map[string]bool
 	store       RecipeStore
 	threadCount int
-	rootHost    string
 	linkClient  linkFetcher
 	sync.Mutex
 }
@@ -64,16 +63,6 @@ func WithThreadCount(num int) Option {
 			return fmt.Errorf("thread count must be between %d and %d", MinThreads, MaxThreads)
 		}
 		app.threadCount = num
-		return nil
-	}
-}
-
-func WithRootHost(root string) Option {
-	return func(app *Application) error {
-		if root == "" {
-			return fmt.Errorf("host cannot be empty")
-		}
-		app.rootHost = root
 		return nil
 	}
 }
@@ -187,7 +176,7 @@ func (app *Application) Run() {
 }
 
 func (app *Application) crawl(ctx context.Context, u *url.URL) ([]*url.URL, domain.Recipe, error) {
-	urls, r, err := app.linkClient.ExtractRecipeLinks(ctx, u.String(), app.rootHost)
+	urls, r, err := app.linkClient.ExtractRecipeLinks(ctx, u.String())
 	if err != nil {
 		if errors.Is(err, domain.ErrTooManyRequests) {
 			return nil, r, err

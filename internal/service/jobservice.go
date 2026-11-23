@@ -131,7 +131,6 @@ func (js *jobService) runJob(job domain.Job) {
 	a, err := app.New(
 		app.WithSourceLink(job.URL),
 		app.WithThreadCount(defaultScrapeThreads),
-		app.WithRootHost(job.RootHost),
 		app.WithStore(js.recipeStore),
 	)
 	if err != nil {
