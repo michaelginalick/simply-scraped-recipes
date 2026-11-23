@@ -13,7 +13,7 @@ import (
 )
 
 func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, error) {
-	body, statusCode, err := fetchBody(lc.client, rawURL)
+	body, statusCode, err := fetchBody(ctx, lc.client, rawURL)
 	if statusCode == http.StatusTooManyRequests {
 		return domain.Recipe{}, domain.ErrTooManyRequests
 	}
