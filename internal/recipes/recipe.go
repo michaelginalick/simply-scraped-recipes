@@ -21,17 +21,15 @@ func (WPRMParser) Parse(r io.Reader) domain.Recipe {
 }
 
 func extractRecipe(doc *html.Node) domain.Recipe {
-
 	var recipe domain.Recipe
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
 			switch {
-			case hasClass(n, "wprm-recipe-name"):
-				recipe.Name = textContent(n)
-				return
-			case hasClass(n, "wprm-recipe-name wprm-block-text-none"):
+			case hasClass(n, "wprm-recipe-name"),
+				hasClass(n, "wprm-recipe-name wprm-block-text-bold"),
+				hasClass(n, "wprm-recipe-name wprm-block-text-none"):
 				recipe.Name = textContent(n)
 				return
 			case hasClass(n, "wprm-recipe-ingredient"):

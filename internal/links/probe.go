@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net"
 	"net/http"
 
@@ -26,14 +24,7 @@ func (lc *LinkClient) Probe(ctx context.Context, rawURL string) (domain.Recipe, 
 		return domain.Recipe{}, err
 	}
 
-	defer body.Close()
-
-	bodyBytes, err := io.ReadAll(body)
-	if err != nil {
-		return domain.Recipe{}, fmt.Errorf("reading body: %w", err)
-	}
-
-	return lc.parser.Parse(bytes.NewReader(bodyBytes)), nil
+	return lc.parser.Parse(bytes.NewReader(body)), nil
 }
 
 func isTimeout(err error) bool {

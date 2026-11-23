@@ -50,23 +50,21 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 		return nil, domain.Recipe{}, domain.ErrTooManyRequests
 	}
 
-	if err != nil || body == nil {
+	if err != nil || body == nil || statusCode >= http.StatusAccepted {
 		return nil, domain.Recipe{}, fmt.Errorf("could not fetch html from link %w", err)
-	}
-
-	defer body.Close()
-
-	bodyBytes, err := io.ReadAll(body)
-	if err != nil {
-		return nil, domain.Recipe{}, fmt.Errorf("reading body: %w", err)
 	}
 
 	baseURL, err := url.Parse(givenURL)
 	if err != nil {
 		return nil, domain.Recipe{}, fmt.Errorf("invalid base URL: %w", err)
 	}
+	sHost, err := url.Parse(scopedHost)
+	if err != nil {
+		return nil, domain.Recipe{}, fmt.Errorf("invalid scoped host: %w", err)
+	}
+	root := baseURL.ResolveReference(sHost)
 
-	doc, err := html.Parse(bytes.NewReader(bodyBytes))
+	doc, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
 		return nil, domain.Recipe{}, fmt.Errorf("parsing HTML: %w", err)
 	}
@@ -86,9 +84,9 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 				}
 
 				fullURL := baseURL.ResolveReference(u)
-
+				// slog.Info("HOSTS", fullURL.Host, scopedHost, "BOOL", strings.Contains(fullURL.Host, scopedHost))
 				// ignore bad, non-root, and urls with a query param
-				if fullURL.Host != "" && fullURL.Host == scopedHost &&
+				if fullURL.Host != "" && fullURL.Host == root.Host &&
 					len(fullURL.RawQuery) == 0 &&
 					!strings.Contains(fullURL.Path, "/de/") &&
 					!strings.Contains(fullURL.Path, "comments") {
@@ -99,13 +97,12 @@ func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL, scoped
 	}
 
 	forEachNode(doc, visitNode, nil)
-
-	recipe := link.parser.Parse(bytes.NewReader(bodyBytes))
+	recipe := link.parser.Parse(bytes.NewReader(body))
 
 	return urls, recipe, nil
 }
 
-func fetchBody(ctx context.Context, client *http.Client, rawURL string) (io.ReadCloser, int, error) {
+func fetchBody(ctx context.Context, client *http.Client, rawURL string) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -126,7 +123,15 @@ func fetchBody(ctx context.Context, client *http.Client, rawURL string) (io.Read
 		return nil, resp.StatusCode, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	return resp.Body, resp.StatusCode, nil
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Error("reading body", "error", err, "errorType", fmt.Sprintf("%T", err))
+		return nil, 0, fmt.Errorf("reading body: %w", err)
+	}
+
+	return bodyBytes, resp.StatusCode, nil
 }
 
 // forEachNode recursively visits HTML nodes using the pre/post functions.
