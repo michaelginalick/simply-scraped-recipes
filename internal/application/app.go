@@ -75,11 +75,15 @@ func WithStore(s RecipeStore) Option {
 }
 
 func New(opts ...Option) (*Application, error) {
+	lc, err := links.NewLinkClient()
+	if err != nil {
+		return &Application{}, err
+	}
 	app := &Application{
 		worklist:    make(chan []*url.URL),
 		unseenLinks: make(chan *url.URL),
 		seenLinks:   make(map[string]bool),
-		linkClient:  links.NewLinkClient(nil, nil),
+		linkClient:  lc,
 		threadCount: DefaultThreadCount,
 	}
 

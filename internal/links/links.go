@@ -27,21 +27,36 @@ type LinkClient struct {
 	parser RecipeParser
 }
 
-// NewLinkClient returns a LinkClient using the given transport and parser.
-// A nil transport falls back to http.DefaultTransport; a nil parser uses WPRMParser.
-func NewLinkClient(transport http.RoundTripper, parser RecipeParser) *LinkClient {
-	if transport == nil {
-		transport = http.DefaultTransport
+func WithParser(parser RecipeParser) Option {
+	return func(lc *LinkClient) error {
+		lc.parser = parser
+		return nil
+	}
+}
+
+func WithRoundTripper(c http.RoundTripper) Option {
+	return func(lc *LinkClient) error {
+		lc.client = &http.Client{Transport: c}
+		return nil
+	}
+}
+
+type Option func(*LinkClient) error
+
+// NewLinkClient returns a LinkClient using the given Options.
+// A client without transport falls back to http.DefaultTransport; a client without parser uses WPRMParser.
+func NewLinkClient(opts ...Option) (*LinkClient, error) {
+	defaultClient := &LinkClient{
+		client: &http.Client{Transport: http.DefaultTransport},
+		parser: r.WPRMParser{},
 	}
 
-	if parser == nil {
-		parser = r.WPRMParser{}
+	for _, opt := range opts {
+		if err := opt(defaultClient); err != nil {
+			return &LinkClient{}, nil
+		}
 	}
-
-	return &LinkClient{
-		client: &http.Client{Transport: transport},
-		parser: parser,
-	}
+	return defaultClient, nil
 }
 
 func (link *LinkClient) ExtractRecipeLinks(ctx context.Context, givenURL string) ([]*url.URL, domain.Recipe, error) {
