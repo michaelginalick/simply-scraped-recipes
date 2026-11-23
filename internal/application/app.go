@@ -100,6 +100,10 @@ func New(opts ...Option) (*Application, error) {
 		}
 	}
 
+	if app.rootHost == "" && app.source != nil {
+		app.rootHost = app.source.Host
+	}
+
 	return app, nil
 }
 

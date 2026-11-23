@@ -17,10 +17,9 @@ import (
 
 func main() {
 	source := flag.String("source", "https://theeburgerdude.com/lentil-mushroom-ground-beef/", "starting link")
-	threadCount := flag.Int("concurrency", 3, "number of active threads. Max 10, min 1")
+	threadCount := flag.Int("concurrency", 1, "number of active threads. Max 10, min 1")
 	dbPath := flag.String("db", cmp.Or(os.Getenv("DB_PATH"), "./recipes.db"), "path to SQLite database file")
 	debug := flag.Bool("debug", false, "enable debug logging")
-	rootHost := flag.String("rootHost", "theeburgerdude.com", "root of site being scraped")
 
 	flag.Parse()
 
@@ -45,7 +44,6 @@ func main() {
 	a, err := app.New(
 		app.WithSourceLink(*source),
 		app.WithThreadCount(*threadCount),
-		app.WithRootHost(*rootHost),
 		app.WithStore(sqlstore.NewSQLWriter(db)),
 	)
 	if err != nil {
