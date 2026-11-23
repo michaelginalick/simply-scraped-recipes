@@ -2,6 +2,7 @@ package links
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -165,7 +166,10 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 		}, nil
 	}), nil)
 
-	client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
+	_, _, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/", "example.com")
+	if err != nil {
+		t.Error(fmt.Printf("unexpected error %v", err))
+	}
 
 	if gotUA == "" {
 		t.Error("expected User-Agent header to be set, got empty string")
