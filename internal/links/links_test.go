@@ -20,13 +20,18 @@ func (f fakeParser) Parse(_ io.Reader) domain.Recipe { return f.recipe }
 
 func newClientWithParser(t *testing.T, body string, status int, p RecipeParser) *LinkClient {
 	t.Helper()
-	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: status,
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Header:     make(http.Header),
-		}, nil
-	}), p)
+	lc := NewLinkClient(
+		WithRoundTripper(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: status,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		})),
+		WithParser(p),
+	)
+
+	return lc
 }
 
 // roundTripFunc lets a plain func satisfy http.RoundTripper.
@@ -38,13 +43,17 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 
 func newClientServing(t *testing.T, body string, status int) *LinkClient {
 	t.Helper()
-	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: status,
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Header:     make(http.Header),
-		}, nil
-	}), nil)
+	lc := NewLinkClient(
+		WithRoundTripper(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: status,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		})),
+	)
+
+	return lc
 }
 
 const recipePage = `<!DOCTYPE html>
@@ -74,7 +83,8 @@ func TestExtractRecipeLinks_ParsesRecipe(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewLinkClient(nil, nil)
+	client := NewLinkClient()
+
 	_, recipe, err := client.ExtractRecipeLinks(context.Background(), srv.URL)
 	if err != nil {
 		t.Fatalf("ExtractRecipeLinks: %v", err)
@@ -157,14 +167,14 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 	t.Parallel()
 	var gotUA string
 
-	client := NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+	client := NewLinkClient(WithRoundTripper(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		gotUA = r.Header.Get("User-Agent")
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(strings.NewReader(`<html><body></body></html>`)),
 			Header:     make(http.Header),
 		}, nil
-	}), nil)
+	})))
 
 	_, _, err := client.ExtractRecipeLinks(context.Background(), "https://example.com/")
 	if err != nil {
@@ -182,7 +192,9 @@ func TestExtractRecipeLinks_SetsUserAgent(t *testing.T) {
 
 func TestNewLinkClient_DefaultTransport(t *testing.T) {
 	t.Parallel()
-	if NewLinkClient(nil, nil) == nil {
+	lc := NewLinkClient()
+
+	if lc == nil {
 		t.Error("expected non-nil LinkClient")
 	}
 }

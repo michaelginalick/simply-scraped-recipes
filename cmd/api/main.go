@@ -89,10 +89,7 @@ func main() {
 	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
 	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))
 
-	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(links.NewLinkClient(&http.Transport{
-		DialContext:           (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
-		ResponseHeaderTimeout: 2 * time.Second,
-	}, nil))))
+	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(newLinkClient())))
 
 	server := &http.Server{
 		Addr:              ":8080",
@@ -134,4 +131,15 @@ func openDB(dsn string, maxConns int) *sql.DB {
 	}
 
 	return db
+}
+
+func newLinkClient() *links.LinkClient {
+	return links.NewLinkClient(
+		links.WithRoundTripper(
+			&http.Transport{
+				DialContext:           (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
+				ResponseHeaderTimeout: 2 * time.Second,
+			},
+		),
+	)
 }

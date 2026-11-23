@@ -15,10 +15,13 @@ func (mockTimeoutErr) Error() string   { return "mock timeout" }
 func (mockTimeoutErr) Timeout() bool   { return true }
 func (mockTimeoutErr) Temporary() bool { return false }
 
-func newTimeoutClient() *LinkClient {
-	return NewLinkClient(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+func newTimeoutClient(t *testing.T) *LinkClient {
+	t.Helper()
+	lc := NewLinkClient(WithRoundTripper(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return nil, mockTimeoutErr{}
-	}), nil)
+	})))
+
+	return lc
 }
 
 // errAny signals that any non-nil error satisfies the test case.
@@ -86,7 +89,7 @@ func TestProbe(t *testing.T) {
 		},
 		{
 			name:    "timeout returns domain.ErrProbeTimeout",
-			client:  newTimeoutClient(),
+			client:  newTimeoutClient(t),
 			wantErr: domain.ErrProbeTimeout,
 		},
 	}
