@@ -65,11 +65,6 @@ func main() {
 	jobSvc := service.NewJobService(jobStore, sqlstore.NewSQLWriter(writeDB), maxJobs)
 	jobSvc.Start(context.Background())
 
-	linkClient, err := newLinkLinkClient()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	static, err := fs.Sub(staticFiles, assetsDirectory)
 	if err != nil {
 		log.Fatal(err)
@@ -94,7 +89,7 @@ func main() {
 	mux.Handle("POST /jobs", jsonMW.ThenFunc(handler.SubmitJobHandler(jobSvc)))
 	mux.Handle("GET /jobs/{id}", jsonMW.ThenFunc(handler.GetJobHandler(reader)))
 
-	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(linkClient)))
+	mux.Handle("POST /probe", jsonMW.ThenFunc(handler.ProbeHandler(newLinkClient())))
 
 	server := &http.Server{
 		Addr:              ":8080",
@@ -138,7 +133,7 @@ func openDB(dsn string, maxConns int) *sql.DB {
 	return db
 }
 
-func newLinkLinkClient() (*links.LinkClient, error) {
+func newLinkClient() *links.LinkClient {
 	return links.NewLinkClient(
 		links.WithRoundTripper(
 			&http.Transport{
